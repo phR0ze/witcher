@@ -1,0 +1,20 @@
+[package]
+name = "witcher"
+version = "0.0.2"
+edition = "2018"
+authors = ["phR0ze"]
+license = "MIT OR Apache-2.0"
+description = "Track and put down errors"
+readme = "README.md"
+homepage = "https://github.com/phR0ze/witcher"
+repository = "https://github.com/phR0ze/witcher"
+exclude = [
+	"examples",
+	"tests",
+	"benches"
+]
+
+[profile.release]
+lto = true
+
+[dependencies]
