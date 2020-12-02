@@ -34,9 +34,14 @@ This means errors:
 
 ### Error Packages <a name="error-packages"/></a>
 
+References:
+* https://nick.groenen.me/posts/rust-error-handling
+* https://blog.yoshuawuyts.com/error-handling-survey
+
 ### anyhow <a name="anyhow"/></a>
 [anyhow](https://github.com/dtolnay/anyhow) does a good job providing convenience and chaining of
-errors. You can combine anyhow and tracing together to make a decent solution.
+errors. You can combine anyhow and tracing together to make a decent solution. I like that it is
+built on top of the `std::error::Error` trait.
 
 Running the code in this section will give you a nicely formatted output:
 ```bash
@@ -49,14 +54,13 @@ Caused by:
 ```
 
 Although `anyhow` provides a chaining of contexts which is great and the simplicity of wrapping
-errors to a common type which is two of the three areas for my minimal requirements it still failed
-when it comes to tracing detail.
+errors to a common type which is two of the three areas for my minimal requirements I have yet to
+understand how it surfaces the backtrace details.
 
 Fails to meet requirements:
-* error detail is missing
-  * the simplified error tracing you'd find in something like the Golang errors package is missing
-  * the underlying error types are not printed out
-  * no good way to integrate the detailed error output with tracing json messaging formats
+* simplified error tracing you'd find in something like the Golang errors package is missing
+* the underlying error types are not printed out
+* no good way to integrate the detailed error output with tracing json messaging formats
 
 ```rust
 use anyhow::Context;
@@ -107,7 +111,7 @@ actually uses `thiserror`
 
 Backtracing example:
 1. Clone the repo
-2. Runt the example
+2. Run the example
 ```bash
 $ cargo run -q --example instrumented-error
 Error 0: failed to do the additional thing
