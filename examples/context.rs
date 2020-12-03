@@ -12,8 +12,7 @@ fn do_second_thing() -> Result<()> {
 
 fn do_third_thing() -> Result<()> {
     println!("Third thing");
-    let err = Error::new("failed to do third thing");
-    Err(err)?
+    Err(Error::new("failed to do third thing"))?
 }
 
 fn main() {
