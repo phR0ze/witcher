@@ -7,7 +7,6 @@ pub mod misc;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// `Error` is a wrapper around lower level error types to provide additional context.
-#[derive(Debug)]
 pub struct Error {
     message: &'static str,
     frames: Vec<backtrace::Frame>,
