@@ -1,20 +1,25 @@
 use crate::term;
 use crate::Error;
-use std::{fmt, error};
 use colored::*;
+use std::{fmt, error};
 
 impl Error {
-    /// Create a new error instance
+    /// Create a new error instance using generics.
     /// 
-    pub fn new(message: &'static str) -> Self {
+    /// Supports any type that implements the trait bounds
+    pub fn new<T>(msg: T) -> Self
+        where T: fmt::Display + Send + Sync + 'static
+    {
         Self { 
-            message,
+            msg: format!("{}", msg),
             frames: crate::backtrace::new(),
         }
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for Error {
+
+}
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -24,7 +29,7 @@ impl fmt::Debug for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", self.message)?;
+        writeln!(f, "{}", self.msg)?;
         for frame in self.frames.iter() {
 
             // Add the symbol and file names
@@ -48,3 +53,17 @@ impl fmt::Display for Error {
     }
 }
 
+// Unit tests
+// -------------------------------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_new() {
+        assert_eq!(String::from("foo"), Error::new("foo").msg);
+        assert_eq!(String::from("foo"), Error::new(String::from("foo")).msg);
+        assert_eq!(String::from("foo"), Error::new(Path::new("foo").display()).msg);
+    }
+}

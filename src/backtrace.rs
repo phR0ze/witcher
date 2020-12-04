@@ -116,5 +116,4 @@ mod tests {
         assert_eq!("/rustc/123/src/libstd/foobar", simple_path(Some(Path::new("/rustc/123/src/libstd").join("foobar").as_ref())));
         assert_eq!("<unknown>", simple_path(None));
     }
-
 }
