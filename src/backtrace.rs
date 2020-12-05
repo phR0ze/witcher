@@ -32,6 +32,7 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "_start",
     "__libc_start_main",
     "start_thread",
+    "__GI__",
 ];
 
 // Create a new backtrace and process it to return a simplified Frame collection
@@ -44,32 +45,22 @@ pub fn new() -> Vec<Frame> {
                 Some(name) => format!("{:#}", name),
                 None => String::from("<unknown>"),
             },
+            filename: simple_path(sym.filename()),
             lineno: sym.lineno(),
             column: sym.colno(),
-            filename: simple_path(sym.filename()),
         }
-    }).filter(|x| !x.is_dependency()).collect()
+    }).collect()
 }
 
 // Provide a convenient way to work with frame information
 #[derive(Debug)]
 pub struct Frame {
     pub symbol: String,         // name of the symbol or '<unknown>'
+    pub filename: String,       // filename the symbole occurred in
     pub lineno: Option<u32>,    // line number the symbol occurred on
     pub column: Option<u32>,    // column number the symbol occurred on
-    pub filename: String,       // filename the symbole occurred in
 }
 impl Frame {
-
-    // Create a new Frame instance
-    pub fn new(symbol: String, lineno: Option<u32>, column: Option<u32>, filename: String) -> Self {
-        Self {
-            symbol,
-            lineno,
-            column,
-            filename,
-        }
-    }
 
     // Check if this is a known rust dependency
     pub fn is_dependency(&self) -> bool {

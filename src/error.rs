@@ -1,10 +1,10 @@
 use crate::term;
 use colored::*;
-use std::error;
+use std::{io, error, convert};
 use std::fmt::{Display, Debug, Formatter, Result};
 
 /// `Error` is a wrapper around lower level error types to provide additional context.
-///
+/// 
 /// All errors implement the std::error::Error trait and so any error can be converted
 /// into a Box<dyn std::error:Error>.
 ///
@@ -16,43 +16,47 @@ use std::fmt::{Display, Debug, Formatter, Result};
 pub struct Error {
     msg: String,
     frames: Vec<crate::backtrace::Frame>,
+    wrapped: Option<Box<dyn error::Error + Send + Sync + 'static>>,
 }
 impl Error {
     /// Create a new error instance using generics.
     /// 
     /// Supports any type that implements the trait bounds
     pub fn new<T>(msg: T) -> Self
-        where T: Display + Send + Sync + 'static
+    where 
+        T: Display + Send + Sync + 'static
     {
         Self {
             msg: format!("{}", msg),
             frames: crate::backtrace::new(),
+            wrapped: None,
         }
     }
-}
 
-// Use default error implementation
-impl error::Error for Error {
-}
+    // Common implementation for displaying error.
+    // A lifetime needs called out here for the frames and the frame references
+    // to reassure Rust that they will exist long enough to get the data needed.
+    fn fmt<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> Result
+    where 
+        T: Iterator<Item = &'a crate::backtrace::Frame>,
+    {
+        write!(f, "message: ")?;
+        if term::isatty() {
+            writeln!(f, "{}", self.msg.red().bold())?;
+        } else {
+            writeln!(f, "{}", self.msg)?;
+        }
 
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Display::fmt(&self, f)
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        writeln!(f, "{}", self.msg)?;
-        for frame in self.frames.iter() {
+        for frame in frames {
 
             // Add the symbol and file names
+            write!(f, "   name: ")?;
             if term::isatty() {
-                writeln!(f, "{}", frame.symbol.red().bold())?;
+                writeln!(f, "{}", frame.symbol.cyan().bold())?;
             } else {
                 writeln!(f, "{}", frame.symbol)?;
             }
-            write!(f, "  at {}", frame.filename)?;
+            write!(f, "     at: {}", frame.filename)?;
 
             // Add the line and columen if they exist
             if let Some(line) = frame.lineno {
@@ -64,6 +68,36 @@ impl Display for Error {
             write!(f, "\n")?;
         }
         Ok(())
+    }
+}
+
+// Use default error implementation
+impl error::Error for Error {
+}
+
+/// Provides the same formatting for output as Display but includes the full
+/// stack trace.
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        self.fmt(f, self.frames.iter())
+    }
+}
+
+/// Provides formatting for output with frames filtered to just target code
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        self.fmt(f, self.frames.iter().filter(|x| !x.is_dependency()))
+    }
+}
+
+// From io::Error
+impl convert::From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+        Self {
+            msg: format!("{:?}", err),
+            frames: crate::backtrace::new(),
+            wrapped: Some(Box::new(err)),
+        }
     }
 }
 
@@ -103,12 +137,26 @@ impl Display for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    
+    fn io_error() -> crate::Result<()> {
+        Err(io::Error::new(io::ErrorKind::Other, "oh no!"))?
+    }
 
     #[test]
     fn test_new() {
         assert_eq!(String::from("foo"), Error::new("foo").msg);
         //assert_eq!(String::from("foo"), Error::new(String::from("foo")).msg);
         //assert_eq!(String::from("foo"), Error::new(Path::new("foo").display()).msg);
+    }
+
+    #[test]
+    fn test_conversion_from_io_error() {
+        let err = io_error().unwrap_err();
+        // if let Some(e) = err.downcast_ref::<io::Error>() {
+            
+        // }
+        assert_eq!("Custom { kind: Other, error: \"oh no!\" }", err.msg);
+        assert_eq!(err.msg, format!("{:?}", err.wrapped.unwrap()));
+        //println!("Failed: {}", err);
     }
 }
