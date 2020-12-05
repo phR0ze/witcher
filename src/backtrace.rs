@@ -17,6 +17,7 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "std::",
     "core::",
     "witcher::error::",
+    "<witcher::error::",
     "witcher::backtrace::",
     "backtrace::backtrace::",
     "_rust_begin_unwind",

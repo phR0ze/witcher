@@ -1,4 +1,4 @@
-use witcher::{Error, Result};
+use witcher::prelude::*;
 
 fn do_first_thing() -> Result<()> {
     println!("First thing");

@@ -4,12 +4,17 @@ pub mod backtrace;
 pub mod misc;
 
 /// `Result<T, Error>` is a simplified return type to use throughout your application.
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E = error::Error> = std::result::Result<T, E>;
 
-/// `Error` is a wrapper around lower level error types to provide additional context.
-pub struct Error {
-    msg: String,
-    frames: Vec<backtrace::Frame>,
+/// Import all essential symbols in a simple consumable way
+///
+/// ### Examples
+/// ```
+/// use witcher::prelude::*;
+/// ```
+pub mod prelude {
+    pub use super::error::Error;
+    pub use super::Result;
 }
 
 #[cfg(test)]
