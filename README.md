@@ -17,12 +17,18 @@ Track and put down bugs using simple concise error handling
   * [Add Additional Context](#add-additional-context)
 * [Design](#design)
   * [Manifesto](#manifesto)
-  * [Concepts implemented](#concepts-implemented)
-* [Error Handling](#error-handling)
+  * [Concepts](#concepts-implemented)
   * [Terminate](#terminate)
   * [Default value](#default-value)
   * [Coerce errors](#coerce-errors)
   * [Downcast errors](#downcast-errors)
+* [Unsafe Rust](#unsafe-rust)
+  * [Transmutting](#transmutting)
+    * [Trait Object](#trait-object)
+    * [vtable](#vtable)
+  * [Data layouts](#data-layouts)
+    * [Size and Alignment](#size-and-alignment)
+    * [repr(C)](#repr-c)
 * [Error Packages](#error-packages)
   * [Error Handling](#error-handling)
     * [failure](#failure)
@@ -64,7 +70,14 @@ result::main
 
 ## Add Additional Context <a name="add-additional-context"/></a>
 Add additional context along the failure path to get a better understanding of what was being done
-when a cryptic low level error is returned.
+when a cryptic low level error is returned. This is done with the `wrap` method implemented for all
+`std::error::Error` and all `std::result::Result`. You can either add an inline description or an
+additional error for better high level programatic decisions.
+
+Witcher supports 3 primary cases with contexts:
+1. a simple message
+2. a message using format like parameters
+3. an error implementing the std::error::Error trait
 
 Example:
 ```rust
@@ -98,7 +111,7 @@ research and testing of numerous different patterns and packages later though I 
 find anything as solid and usable as the venerable [pkg/errors](https://github.com/pkg/errors). So
 I'll add to this archaeological dig with my own take on error handling.
 
-## Concepts implemented <a name="concepts-implemented"/></a>
+## Concepts <a name="concepts"/></a>
 
 ### Error <a name="error"/></a>
 Most error handling implementations have the concept of a new error type `Error` that will be used to
@@ -111,17 +124,14 @@ wrap other errors and contain more information that is available with the the ve
 * store a backtrace for tracing details
 
 ### Result <a name="result"/></a>
+Having a simplified common `Result` type is  must for a Rust error handling solution. 
 
+* support the ability to call a method on all `std::error::Error + Send + 'static` types
+* collect and store a backtrace and the earliest opportunity
 
-* defines a `chain_err` method for all `std::error::Error + Send + 'static` types
-* uses `chain_err` to convert errors into `error_chain::Error` types and stores the original error in
-a box.
-* collects and stores a single Backtrace at the earliest opportunity and propogates it down the stack
-through `From`.
-
-***tradeoffs***
-* Because the Error type contains a `std::error::Error + Send + 'static` it can't implement the
-`PartialEq` for easy comparisons.
+### wrap <a name="wrap"/></a>
+Add additional context to an existing error is done with the `wrap` method implemented for both
+the `std::error:Error` and the `std::result::Result`.
 
 ### bail! <a name="bail"/></a>
 The `bail!` macro is a concept that came up again and again in the various error packages that I've
@@ -129,10 +139,35 @@ used and reviewed. The idea is simple. Make instantiating and returning a new er
 simple and fast.
 
 ```rust
-tbd
+use witcher::prelude::*;
+
+fn do_something() -> Result<()> {
+    bail!("something bad")
+}
+
+fn main() {
+    let err = do_something().unwrap_err();
+    println!("{}", err);
+}
 ```
 
-## Error Handling <a name="error-handling"/></a>
+### ensure! <a name="ensure"/></a>
+The `ensure!` macro is another concept that is common in error handling. The intent is to allow
+checking of parameters etc.. to quickly and easily create an error based on a message if a condition
+is not met.
+
+```rus
+use witcher::prelude::*;
+
+fn do_something(val: u32) -> Result<()> {
+    ensure!(val > 2, "invalid argument")
+}
+
+fn main() {
+    let err = do_something(1).unwrap_err();
+    println!("{}", err);
+}
+```
 
 ### Terminate <a name="terminate"/></a>
 This is a controversial subject but though some errors cannot be recovered from, in my opinion, all
@@ -241,6 +276,236 @@ fn main() {
 ### Downcase errors <a name="downcast-errors"/></a>
 When handling errors its often useful to take a boxed error and 
 
+# Unsafe Rust <a name="unsafe-rust"/></a>
+Simply documenting my foray into the world of `unsafe` Rust as pertains to type manipulation for
+errors.  `unsafe` indicates the existence of functions and trait declarations not checked by the
+compiler and instead must be manually hand checked. You can use `unsafe` on a trait to declare that
+the implementation upholds the trait's contract.
+
+The standard library has a number of unsafe functions, including:
+* `slice::get_unchecked` which performs unchecked indexing, allowing memory safety to be freely
+  violated.
+* `mem::transmute` reinprets some value as having a given type, bypassing type safety in arbitrary
+  ways.
+* `Send` is a trait that promises implementors are safe to send i.e. move to another thread
+* `Sync` is a trait that promises threads can safely share implementors through a reference
+* `GlobalAlloc` allows customizing the memory allocator of the whole program
+
+* vtable
+* fat pointer
+* trait object
+
+References:
+* [Rustonomicon Book](https://doc.rust-lang.org/nomicon/index.html)
+* [Type Conversions](https://doc.rust-lang.org/nomicon/conversions.html)
+* [Casts](https://doc.rust-lang.org/nomicon/casts.html)
+* [Transmutes](https://doc.rust-lang.org/nomicon/transmutes.html)
+* [Dynamic Dispatch](https://alschwalm.com/blog/static/2017/03/07/exploring-dynamic-dispatch-in-rust/)
+* [Trait Objects](https://doc.rust-lang.org/1.8.0/book/trait-objects.html)
+
+## Transmutting <a name="transmutting"/></a>
+At the end of the day everything is just a pile of bits somewhere and the type systems are just there
+to help us use those bits the right way. There are two common problems with typing bits: needing to
+reinterpret those exact bits as a different type and needing to change the bits to have equivalent
+meaning for a different type. Transmutation is used to manually reinterpret the underlying data
+layout to perform our own typing. To be clear this is one of the most horribly unsafe things you can
+do in Rust and the ways to cause undefined behavior are mind boggling.
+
+`mem::transmute<T, U>` takes a value of type `T` and reinterpretes it to have a type `U`. The only
+restriction is that the `T` and `U` are verified to have the same size.
+
+Pitfalls:
+* Creating an instance of any type with an invalid state is going to cause undeterminted chaos
+* Not specifying the return type may cause chaos
+* Transmuting a `&` to a `&mut` is no bueno
+* Transmuting to a reference without an explicit lifetime produces an ubounded lifetime
+* Compound types must have the same layout or the wrong fields will get the wrong data
+  * Solution: use `repr(C)` which has precise data layout
+
+Benefits:
+* Essentially free performance wise
+
+
+### Trait Object <a name="trait-object"/></a>
+In `polymorphism` the mechanism to determine which version is run is called `dispatch`. While Rust
+favors `static dispatch` it also supports dynamic dispatch through `trait objects`.
+
+References:
+* [unboxed trait objects](https://guiand.xyz/blog-posts/unboxed-trait-objects.html)
+
+Rust uses `monomorphization` or `specialization` to perform static dispatch using trait bounds in the
+following case.  This means that Rust will create a new version of `do_something` for each type used
+and compile that in e.g. `do_something(x: String)` or `do_something(x: i32)` depending on what types
+were used at compile time. The upside of this is its inline and fast, but bloats the binary with
+extra copies of the same code for different types.
+```rust
+fn do_something<T: Foo>(x: T) {
+    x.method();
+}
+```
+
+Dynamic dispatch is used for trait objects like `&Foo` or `Box<Foo>` where your storing a value of
+any type that implements the given trait, where the precise type can only be known at runtime. A
+trait object can be obtained from a pointer to a concrete type that implements the trait by `casting`
+it e.g. `&x as &Foo` or `coercing` it e.g. using `&x` as an argument to a function that takes `&Foo`.
+
+This operation can be see and `erasing` the compiler's knoweledge about the specific type of the
+pointer, and hence trait objects are sometimes referreed to as `type erasure`. A function that takes
+a trait object without generic parameterization i.e. `<T>` will not create specialized functions for
+each type saving code bloat, but requiring slower virtual function calls by inhibiting inlining.
+```rust
+fn do_something(x: &Foo) {
+    x.method();
+}
+fn main() {
+    let x = 5u8;
+    do_something(&x);         // coercion
+    do_something(&x as &Foo); // casting
+}
+```
+
+A pointer to a trait object encodes both its data address and its vtable address i.e. they are a
+`fat pointer` and on a 64 bit system takes up 128 bits total for its two addresses.
+
+### vtable <a name="vtable"/></a>
+The methods of the trait can be called on the trait object via a special record function pointers
+traditionally called the `vtable` which is created and managed by the compiler. Trait objects are
+both simple and complicated: their core representation and layout is quite straight forward, but
+there are some error messages and surprising behavior to discover.
+
+References:
+* [\*const T vs \*mut T](https://internals.rust-lang.org/t/what-is-the-real-difference-between-const-t-and-mut-t-raw-pointers/6127)
+* [nightly code around this](https://doc.rust-lang.org/1.8.0/std/raw/struct.TraitObject.html)
+* [representation of a trait object](https://doc.rust-lang.org/1.8.0/book/trait-objects.html#representation)
+* [Dynamic dispatch](https://alschwalm.com/blog/static/2017/03/07/exploring-dynamic-dispatch-in-rust/)
+
+A trait like `&Foo` consists of a `data` pointer and a `vtable` pointer. The data pointer addresses
+the data of some unknown type `T` that the trait object is storing, and the vtable pointer points to
+the `virtual method table` corresponding to the implementation of `Foo` for `T`.
+```rust
+// Using *const to indicate that no change is being made to the data
+struct TraitObject {
+    data: *const (),
+    vtable: *const (),
+}
+```
+
+A vtable is essentially a struct of function pointers, pointing to the concrete piece of machine code
+for each method in the implementation. A methdo call like `trait_object.method()` will retrieve the
+correct pointer out of the vtble and then do a dynamic all of it. For example:
+```rust
+struct FooVtable {
+    destructor: fn(*mut ()),
+    size: usize,
+    align: usize,
+    method: fn(*const ()) -> String,
+}
+
+fn call_method_on_u8(x: *const ()) -> String {
+    // the compiler guarantees that this function is only called with `x` pointing to a u8
+    let byte: &u8 = unsafe { &*(x as *const u8) };
+    byte.method()
+}
+
+static Foo_for_u8_vtable: FooVtable = FooVtable {
+    destructor: /* compiler magic */,
+    size: 1,
+    align: 1,
+
+    // cast to a function pointer
+    method: call_method_on_u8 as fn(*const ()) -> String,
+};
+```
+
+The `destructor` field in each vtable points to a function that will clean up any resources of the
+vtable's type. For `u8` its trivial, but for `String` it will free the memory. This is necessary for
+owning trait objects like `Box<Foo>` which need to clean-up both the `Box` allocation as well as the
+internal type when they go out of scope. The `size` and `align` fields store the size of the erased
+type and its alignment requirements; these are unused at the moment as the information is embedded in
+the destructor, but will be used in the future as trait objects are made more flexible.
+
+## Data layouts <a name="data-layouts"/></a>
+The layout of a type is its `size`, `alignment` and the `relative offsets of its fields`. For enums,
+how the discriminant is laid out and interpreted is also part of the type layout.
+
+References:
+* [Type layout](https://doc.rust-lang.org/reference/type-layout.html)
+* [Data representations](https://doc.rust-lang.org/reference/type-layout.html#representations)
+* [Alternative representations](https://doc.rust-lang.org/nomicon/other-reprs.html)
+* [repr(C) structs](https://doc.rust-lang.org/reference/type-layout.html#reprc-structs)
+* [Struct memory layout](https://doc.rust-lang.org/std/alloc/struct.Layout.html)
+
+### Size and Alignment <a name="size-and-alignment"/></a>
+All values have a size and alignment. The `alignment` of a value specifies what addresses are valid
+to store the value at. A value of alignment `n` must only be stored at an address that is a multiple
+of `n`. Alignment is measured in bytes and must be at least 1 and always a power of 2. The alignment
+of a value can be checked with the `align_of_val` function.
+
+The `size` of a value is the offset in bytes between successive elements in an array with that item
+type including alignment padding. The size of a value is always a multiple of its alignment. The size
+of a value can be checked with the `size_of_val` function.
+
+Types where all values have hte same size and alignment known at compile time implement the `Sized`
+trait and can be checked with the `size_of` and `align_of` functions. Types that are not `Sized` are
+known as `dynamically sized types` or `DST` or informally as an `unsized` type. Slices and trait
+objects are two examples of DSTs. Such types can only be used in certain cases. Structs may contain a
+DST as the last field, this makes the struct itself a DST.
+
+`usize` and `isize` have a size big enough to contain every address on the target platform i.e. on a
+32 bit target this value is `4 bytes` and on a 64 bit target this value is `8 bytes`.
+
+Pointers to sized types have the same size and alignment as `usize`. Although you shouldn't rely on
+this all pointers to DSTs are currently twice the size of `usize` and have the same alignment.
+
+### repr(C) <a name="repr-c"/></a>
+Rust allows you to specify alternative data layout strategies such as `repr(C)`.  This data
+representation follows the C language specification for order, size and alignment of fields. Since
+the ***default rust data representation has NO guarantees of data layout*** it is useful to use the
+***repr(C) which does have guarantees of layout*** when passing types through the FFI boundary to C
+and to form a sound base for more elaborate data layout manipulation such as ***reinterpreting values
+as a different type***. 
+
+Restrictions for using `repr(C)`
+* ZSTs are still zero-sized
+* DST pointers i.e. wide or fat pointers are not a concept in C and never FFI safe
+* Can not be applied to `zero-variant enums` as there is no `C` representation
+
+The representation of a type can be changed by applying the `repr` attribute. Additionally the
+aligment may be altered as well.
+```rust
+// C representation, alignment raised to 8
+#[repr(C, align(8))]
+struct AlignedStruct {
+    first: i16,
+    second: i8,
+    third: i32
+}
+```
+
+As a consequence of the data layout representation being an attribute on the item, the representation
+does not depend on generic parameters. This means that any two types with the same name regardless to
+the generic's type have the same representation. For example both `Foo<Bar>` and `Foo<Baz>` for the
+following code would both be `repr(C)`.
+
+```rust
+#[repr(C)]
+struct Foo<T> {
+    first: i16,
+    second: i8,
+    third: i32
+}
+```
+
+For structs like those above the algorithm for determining size and offset is as follows:
+1. Start with a current offset of 0 bytes
+2. For each field in declaration order in the struct, first determine the size and alignment of the
+   field. If the current offset is not a multiple of the field's alignment, then add padding to the
+   current offset until it is a multiple of the field's alignment. the offset for the field is what
+   the current offset is now. Then increase the current offset by teh size of the field.
+3. Finally, the size of the struct is the current offset rounded up to the nearest multiple of the
+   struct's alignment.
+   
+
 # Error Packages <a name="error-packages"/></a>
 Rust has had a rough start with proper error handling. `Failure` was the first attempt to fix the
 error handling issues in Rust. Since that time the `std::error::Error` trait has improved and now the
@@ -267,6 +532,9 @@ promoting the new in vogue packages `anyhow` and `thiserror`.
 
 Failure was designed to make it easier to manage errors in Rust intended to address some of the
 shortcommings perceived in `std::error::Error`.
+
+Failure uses a new common struct `Error` type that they convert everything to similar to anyhow or
+error-chain creatable from a `Box<dyn StdError + Sync + Send + 'static`>
 
 ### error-chain <a name="error-chain"/></a>
 [error-chain](https://github.com/rust-lang-nursery/error-chain) billed as the predecessor and

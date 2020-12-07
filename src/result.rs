@@ -1,10 +1,15 @@
+use crate::error::Error;
 
-pub trait OmitExt {
+/// `Result<T>` is a simplified return type to use throughout your application.
+pub type Result<T> = std::result::Result<T, Error>;
+
+pub trait ResultExt {
+
     /// Simply consumes the result ignoring it
     fn omit(&self);
 }
 
-impl OmitExt for std::fmt::Result {
+impl ResultExt for std::fmt::Result {
     fn omit(&self) {
         let _ = match self {
             Ok(_) => (),

@@ -1,13 +1,12 @@
 use crate::term;
 use colored::*;
-use std::{io, error, convert};
-use std::fmt::{Display, Debug, Formatter, Result};
 
 /// `Error` is a wrapper around lower level error types to provide additional context.
 /// 
-/// All errors implement the std::error::Error trait and so any error can be converted
-/// into a Box<dyn std::error:Error>.
-///
+/// `Error` provides the following benefits
+///  - ensures a backtrace will be taken at the earliest opportunity
+///  - ensures that the error type is threadsafe and has a static lifetime
+/// 
 /// Context comes in two forms. First every time an error is wrapped you have the
 /// opportunity to add an additional message. Finally a simplified stack trace is
 /// automatically provided that narrows in on your actual code ignoring the wind up
@@ -16,7 +15,7 @@ use std::fmt::{Display, Debug, Formatter, Result};
 pub struct Error {
     msg: String,
     frames: Vec<crate::backtrace::Frame>,
-    wrapped: Option<Box<dyn error::Error + Send + Sync + 'static>>,
+    //wrapped: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 impl Error {
     /// Create a new error instance using generics.
@@ -24,19 +23,30 @@ impl Error {
     /// Supports any type that implements the trait bounds
     pub fn new<T>(msg: T) -> Self
     where 
-        T: Display + Send + Sync + 'static
+        T: std::fmt::Display + Send + Sync + 'static
     {
         Self {
             msg: format!("{}", msg),
             frames: crate::backtrace::new(),
-            wrapped: None,
+            //wrapped: None,
+        }
+    }
+
+    pub fn new_from_err<T>(err: T) -> Self
+    where
+        T: std::error::Error + Send + Sync + 'static, 
+    {
+        //let obj: TraitObject = mem::transmute(&error as &dyn StdError);
+        Self {
+            msg: format!("{}", err),
+            frames: crate::backtrace::new(),
         }
     }
 
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    fn fmt<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> Result
+    fn fmt<'a, T>(&self, f: &mut std::fmt::Formatter<'_>, frames: T) -> std::fmt::Result
     where 
         T: Iterator<Item = &'a crate::backtrace::Frame>,
     {
@@ -72,65 +82,33 @@ impl Error {
 }
 
 // Use default error implementation
-impl error::Error for Error {
+impl std::error::Error for Error {
 }
 
 /// Provides the same formatting for output as Display but includes the full
 /// stack trace.
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt(f, self.frames.iter())
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt(f, self.frames.iter().filter(|x| !x.is_dependency()))
     }
 }
 
-// From io::Error
-impl convert::From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
+impl std::convert::From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
         Self {
             msg: format!("{:?}", err),
             frames: crate::backtrace::new(),
-            wrapped: Some(Box::new(err)),
+            //wrapped: Some(Box::new(err)),
         }
     }
 }
-
-// pub trait Convert {
-//     fn err<T>(self) -> Error
-//         where T: Display + Send + Sync + 'static;
-// }
-
-// impl Convert for &str
-// {
-//     fn err<T>(self) -> Error
-//         where T: Display + Send + Sync + 'static,
-//     {
-//         Error {
-//             msg: String::from("foo"),
-//             frames: crate::backtrace::new(),
-//         }
-//     }
-// }
-
-// impl convert::From<error::Error> for Error {
-//     fn from(err: error:Error) -> Self {
-//         Error{}
-//     }
-// }
-        // Self { 
-        //     msg: msg.into(),
-        //     frames: crate::backtrace::new(),
-        // }
-// pub trait ErrorExt {
-//     fn into<T>(other: T) -> Error
-//         where T: Display + Send + Sync + 'static;
-// }
 
 // Unit tests
 // -------------------------------------------------------------------------------------------------
@@ -138,8 +116,8 @@ impl convert::From<io::Error> for Error {
 mod tests {
     use super::*;
     
-    fn io_error() -> crate::Result<()> {
-        Err(io::Error::new(io::ErrorKind::Other, "oh no!"))?
+    fn io_error() -> crate::result::Result<()> {
+        Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"))?
     }
 
     #[test]
@@ -152,7 +130,7 @@ mod tests {
     #[test]
     fn test_conversion_from_io_error() {
         let err = io_error().unwrap_err();
-        // if let Some(e) = err.downcast_ref::<io::Error>() {
+        // if let Some(e) = err.downcast_ref::<std::io::Error>() {
             
         // }
         assert_eq!("Custom { kind: Other, error: \"oh no!\" }", err.msg);

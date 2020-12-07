@@ -1,4 +1,4 @@
-use crate::misc::OmitExt;
+use crate::result::ResultExt;
 use std::fmt::Write;
 use std::path::Path;
 
@@ -36,7 +36,7 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
 ];
 
 // Create a new backtrace and process it to return a simplified Frame collection
-pub fn new() -> Vec<Frame> {
+pub(crate) fn new() -> Vec<Frame> {
     let bt = backtrace::Backtrace::new();
 
     bt.frames().iter().flat_map(|x| x.symbols()).map(|sym| {
@@ -54,7 +54,7 @@ pub fn new() -> Vec<Frame> {
 
 // Provide a convenient way to work with frame information
 #[derive(Debug)]
-pub struct Frame {
+pub(crate) struct Frame {
     pub symbol: String,         // name of the symbol or '<unknown>'
     pub filename: String,       // filename the symbole occurred in
     pub lineno: Option<u32>,    // line number the symbol occurred on
