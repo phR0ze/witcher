@@ -1,11 +1,16 @@
 use crate::term;
 use colored::*;
 
+static ERROR_TYPE: &str = "witcher::Error";
+static LONG_ERROR_TYPE: &str = "witcher::error::Error";
+static SIMPLE_ERROR_TYPE: &str = "witcher::error::SimpleError";
+
 /// `Error` is a wrapper around lower level error types to provide additional context.
 /// 
 /// `Error` provides the following benefits
 ///  - ensures a backtrace will be taken at the earliest opportunity
 ///  - ensures that the error type is threadsafe and has a static lifetime
+///  - provides matching on error types
 /// 
 /// Context comes in two forms. First every time an error is wrapped you have the
 /// opportunity to add an additional message. Finally a simplified stack trace is
@@ -13,34 +18,91 @@ use colored::*;
 /// and wind down that resides in the Rust std libraries and other dependencies
 /// allowing you to focus on your code.
 pub struct Error {
+
+    // Error message
     msg: String,
+
+    // Original error type and name
+    type_id: std::any::TypeId,
+    type_name: String,
+
+    // Backtrace for the error
     frames: Vec<crate::backtrace::Frame>,
-    //wrapped: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+
+    // Wrapper<()> is a zero sized type (ZST), in this context, acting as a place holder for an
+    // unmanaged concrete instance of Wrapper. This means memory will need to be manually managed.
+    wrapper: Box<Wrapper<()>>,
 }
 impl Error {
+
     /// Create a new error instance using generics.
     /// 
     /// Supports any type that implements the trait bounds
     pub fn new<T>(msg: T) -> Self
     where 
-        T: std::fmt::Display + Send + Sync + 'static
+        T: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static
     {
-        Self {
-            msg: format!("{}", msg),
+        Error::wrap(SimpleError(msg))
+    }
+
+    /// Wrap the given error for internal use.
+    ///
+    /// We require bounding with Send, Sync and 'static to ensure that the low level type
+    /// manipulation being done internally will be as safe as possible.
+    pub fn wrap<T>(err: T) -> Error
+    where
+        T: std::error::Error + Send + Sync + 'static,
+    {
+        // Construct a public facing general error encapsulating all this detail
+        Error {
+            // Store the original error's message
+            msg: format!("{}", err),
+
+            // Store the original error's type and name
+            type_id: std::any::TypeId::of::<T>(),
+            type_name: Error::name(&err),
+
+            // Capture a backtrace for the error
             frames: crate::backtrace::new(),
-            //wrapped: None,
+
+            // Construct a wrapper around the error's raw components for internal access
+            wrapper: unsafe {
+                // Deconstruct the error Trait DST into is various raw constituent parts
+                // https://doc.rust-lang.org/src/core/raw.rs.html#60
+                let obj: TraitObject =  std::mem::transmute(&err as &dyn std::error::Error);
+                let wrapper = Wrapper {
+                    vtable: obj.vtable,
+                    error: err,
+                };
+
+                // Transmute the wrapper to ensure it is unmanaged and strip off its typing.
+                // This essentially eats the Box and removes any ownership from wrapper which
+                // means it will be a memory leak if we don't handle it manually.
+                std::mem::transmute(Box::new(wrapper))
+            }
         }
     }
 
-    pub fn new_from_err<T>(err: T) -> Self
-    where
-        T: std::error::Error + Send + Sync + 'static, 
-    {
-        //let obj: TraitObject = mem::transmute(&error as &dyn StdError);
-        Self {
-            msg: format!("{}", err),
-            frames: crate::backtrace::new(),
+    /// Extract the name of the given error type and perform some clean up on the type
+    fn name<T>(_: T) -> String {
+        let mut name = format!("{}", std::any::type_name::<T>());
+
+        // Strip off prefixes
+        if name.starts_with('&') {
+            name = String::from(name.trim_start_matches('&'));
         }
+
+        // Strip off suffixes
+        name = String::from(name.split("<").next().unwrap_or("<unknown>"));
+
+        // Hide SimpleError and full Error path
+        if name == SIMPLE_ERROR_TYPE {
+            name = String::from(ERROR_TYPE);
+        } else if name == LONG_ERROR_TYPE {
+            name = String::from(ERROR_TYPE);
+        }
+
+        name
     }
 
     // Common implementation for displaying error.
@@ -50,23 +112,26 @@ impl Error {
     where 
         T: Iterator<Item = &'a crate::backtrace::Frame>,
     {
-        write!(f, "message: ")?;
+        write!(f, " error: ")?;
         if term::isatty() {
-            writeln!(f, "{}", self.msg.red().bold())?;
+            write!(f, "{}, msg: ", self.type_name.bright_red())?;
+            writeln!(f, "{}", self.msg.bright_red())?;
         } else {
+            write!(f, "{}, msg: ", self.type_name)?;
             writeln!(f, "{}", self.msg)?;
         }
 
         for frame in frames {
 
-            // Add the symbol and file names
-            write!(f, "   name: ")?;
+            // Add the symbol and file information
+            write!(f, "symbol: ")?;
             if term::isatty() {
-                writeln!(f, "{}", frame.symbol.cyan().bold())?;
+                write!(f, "{}", frame.symbol.bright_cyan())?;
+                write!(f, ", at: {}", frame.filename.bright_cyan())?;
             } else {
-                writeln!(f, "{}", frame.symbol)?;
+                write!(f, "{}", frame.symbol)?;
+                write!(f, ", at: {}", frame.filename)?;
             }
-            write!(f, "     at: {}", frame.filename)?;
 
             // Add the line and columen if they exist
             if let Some(line) = frame.lineno {
@@ -100,13 +165,78 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::convert::From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Self {
-            msg: format!("{:?}", err),
-            frames: crate::backtrace::new(),
-            //wrapped: Some(Box::new(err)),
+// Following the std::raw::TraitObject pattern rather than using it since it is nightly-only.
+// https://doc.rust-lang.org/std/raw/struct.TraitObject.html
+// https://doc.rust-lang.org/src/core/raw.rs.html
+//
+// This struct has the same internal layout as Trait DSTs e.g. &dyn Wrapper and Box<dyn Wrapper>
+// allowing you to deconstruct a Trait DST into its raw constituent parts that will no longer be
+// managed by the Rust memory management system and needs to be handled manually.
+//
+// TraitObject is guaranteed to match layouts by using the alternate repr(C) data representation to
+// get a reliable layout and thus can be used as targets for transmutes in unsafe code for
+// manipulating the raw representations directly. The only way to create values of this type is with
+// functions like std::mem::transmute. Similarly, the only way to create a true trait object from a
+// TraitObject value is with transmute.
+//
+// *const and *mut are equivalent in this context. I'm using *const to indicate that no change
+// is going to occur to the error's raw constituent parts.
+#[repr(C)]
+struct TraitObject {
+    data: *const (),
+    vtable: *const (),
+}
+
+// Wrap an error's raw constituent parts with this wrapper so that we can easily refer to them
+// individually and manage memory manually while still being able to convert back into the
+// original typed error when needed. This will allow for managing any error type that implements
+// the trait std::error::Error and for complex operations like matching on error types.
+// Using alternate repr(C) data representation to get a reliable layout.
+// -------------------------------------------------------------------------------------------------
+#[repr(C)]
+struct Wrapper<T> {
+    vtable: *const (),      // the original error's virtual method table
+    error: T,               // the original error
+}
+impl Wrapper<()> {
+    // Re-construct the original error from its raw constituent parts
+    fn unwrap(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+        unsafe {
+            // https://doc.rust-lang.org/src/core/raw.rs.html#69
+            std::mem::transmute(TraitObject {
+                data: &self.error,      // gets coerced into *const type
+                vtable: self.vtable,
+            })
         }
+    }
+}
+
+// Simple error is just an error with an un-named field for displaying a
+// simple message and keep the wrapping syntax clean and uniform.
+// -------------------------------------------------------------------------------------------------
+struct SimpleError<T>(T)
+where
+    T: std::fmt::Display + std::fmt::Debug;
+
+impl<T> std::error::Error for SimpleError<T>
+where
+    T: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static {}
+
+impl<T> std::fmt::Debug for SimpleError<T>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl<T> std::fmt::Display for SimpleError<T>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
     }
 }
 
