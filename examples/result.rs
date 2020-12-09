@@ -1,7 +1,11 @@
 use witcher::prelude::*;
 
 fn do_something() -> Result<()> {
-    Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"))?
+    do_another_thing().wrap("something")
+}
+
+fn do_another_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"))
 }
 
 fn main() {

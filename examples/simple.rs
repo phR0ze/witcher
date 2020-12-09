@@ -1,11 +1,11 @@
 use witcher::prelude::*;
 
 fn do_something() -> Result<()> {
-    do_another_something()
+    do_another_thing().wrap("something")
 }
 
-fn do_another_something() -> Result<()> {
-    Err(Error::new("oh no!"))
+fn do_another_thing() -> Result<()> {
+    Error::new("oh no!")
 }
 
 fn main() {

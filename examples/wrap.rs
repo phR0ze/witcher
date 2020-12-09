@@ -5,11 +5,11 @@ fn do_first_thing() -> Result<()> {
 }
 
 fn do_second_thing() -> Result<()> {
-    do_third_thing().wrap("second context")
+    do_third_thing().wrap("second wrap")
 }
 
 fn do_third_thing() -> Result<()> {
-    Err(Error::new("oh no!"))?
+    Error::wrap(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"), "third")
 }
 
 fn main() {

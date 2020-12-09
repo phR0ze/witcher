@@ -34,6 +34,11 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "__GI__",
 ];
 
+const DEPENDENCY_SYM_CONTAINS: &[&str] = &[
+    "as witcher::wrapper::Wrapper",
+];
+
+
 // Process the given backtrace return a simplified Frame collection
 pub(crate) fn new() -> Vec<Frame> {
     let bt = backtrace::Backtrace::new();
@@ -64,6 +69,7 @@ impl Frame {
     // Check if this is a known rust dependency
     pub fn is_dependency(&self) -> bool {
         if DEPENDENCY_SYM_PREFIXES.iter().any(|x| self.symbol.starts_with(x))
+            || DEPENDENCY_SYM_CONTAINS.iter().any(|x| self.symbol.contains(x))
             || DEPENDENCY_FILE_PREFIXES.iter().any(|x| self.filename.starts_with(x))
             || DEPENDENCY_FILE_CONTAINS.iter().any(|x| self.filename.contains(x))
         {

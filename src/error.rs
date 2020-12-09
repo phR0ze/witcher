@@ -40,7 +40,7 @@ impl Error {
     /// Create a new error instance using generics.
     /// 
     /// Supports any type that implements the trait bounds
-    pub fn new<M>(msg: M) -> Self
+    pub fn new<M>(msg: M) -> crate::Result<()>
     where 
         M: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static
     {
@@ -51,7 +51,7 @@ impl Error {
     ///
     /// We require bounding with Send, Sync and 'static to ensure that the low level type
     /// manipulation being done internally will be as safe as possible.
-    pub fn wrap<E, M>(err: E, msg: M) -> Error
+    pub fn wrap<E, M>(err: E, msg: M) -> crate::Result<()>
     where
         E: std::error::Error + Send + Sync + 'static,
         M: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
@@ -65,7 +65,7 @@ impl Error {
         }
 
         // Construct a public facing general error encapsulating all this detail
-        Error {
+        Err(Error {
             // Store the wrapping message
             msg: format!("{}", msg),
             err_msg: format!("{}", err),
@@ -90,7 +90,7 @@ impl Error {
             //     // means it will be a memory leak if we don't handle it manually.
             //     std::mem::transmute(Box::new(wrapper))
             // }
-        }
+        })
     }
 
     /// Extract the name of the given error type and perform some clean up on the type

@@ -18,7 +18,7 @@ where
     where
         M: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
     {
-        self.map_err(|err| Error::wrap(err, msg))
+        self.map_err(|err| Error::wrap(err, msg).unwrap_err())
     }
 }
 
