@@ -1,4 +1,3 @@
-use crate::result::ResultExt;
 use std::fmt::Write;
 use std::path::Path;
 
@@ -35,7 +34,7 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "__GI__",
 ];
 
-// Create a new backtrace and process it to return a simplified Frame collection
+// Process the given backtrace return a simplified Frame collection
 pub(crate) fn new() -> Vec<Frame> {
     let bt = backtrace::Backtrace::new();
 
@@ -94,12 +93,32 @@ fn simple_path(filename: Option<&Path>) -> String {
     return w
 }
 
+// Helper to suppress unwanted result checks
+// -------------------------------------------------------------------------------------------------
+trait Omit {
+    fn omit(&self);
+}
+impl Omit for std::fmt::Result {
+     fn omit(&self) {
+         let _ = match self {
+             Ok(_) => (),
+             Err(_) => (),
+         };
+     }
+}
+
 // Unit tests
 // -------------------------------------------------------------------------------------------------
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+     
+    #[test]
+    fn test_omit() {
+        let mut w = String::new();
+        write!(&mut w, "foobar").omit();
+    } 
+
     #[test]
     fn test_simple_path() {
         let cwd = std::env::current_dir().unwrap();
