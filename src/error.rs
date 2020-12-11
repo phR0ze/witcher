@@ -5,6 +5,7 @@ use crate::term::Colorized;
 use crate::Result;
 
 static ERROR_TYPE: &str = "witcher::Error";
+static STDERROR_TYPE: &str = "std::error::Error";
 static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 
 /// `Error` is a wrapper around lower level error types to provide additional context.
@@ -28,8 +29,8 @@ pub struct Error {
     type_id: TypeId,
     type_name: String,
 
-    // // Backtrace for the error
-    // backtrace: Vec<crate::backtrace::Frame>,
+    // Backtrace for the error
+    backtrace: Vec<crate::backtrace::Frame>,
 
     // Inner wrapped error
     inner: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
@@ -46,7 +47,7 @@ impl Error {
             msg: format!("{}", msg),
             type_id: TypeId::of::<Error>(),
             type_name: String::from(ERROR_TYPE),
-            // backtrace: crate::backtrace::new(),
+            backtrace: crate::backtrace::new(),
             inner: None,
         })
     }
@@ -62,7 +63,7 @@ impl Error {
             msg: format!("{}", msg),
             type_id: TypeId::of::<E>(),
             type_name: Error::name(&err),
-            // backtrace: crate::backtrace::new(),
+            backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
         })
     }
@@ -75,9 +76,9 @@ impl Error {
     {
         Err(Error {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<M>(), // FIX THIS
-            type_name: Error::name(&err),
-            // backtrace: crate::backtrace::new(),
+            type_id: TypeId::of::<dyn std::error::Error>(),
+            type_name: String::from(STDERROR_TYPE),
+            backtrace: crate::backtrace::new(),
             inner: Some(err),
         })
     }
@@ -125,10 +126,9 @@ impl Error {
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    //fn fmt<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result
-    // where 
-    //     T: Iterator<Item = &'a crate::backtrace::Frame>,
+    fn fmt<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
+    where 
+        T: Iterator<Item = &'a crate::backtrace::Frame>,
     {
         let c = Colorized::new();
 
@@ -145,36 +145,22 @@ impl Error {
             }
         }
 
-        // // Print out the wrapped error type and message
-        // write!(f, " error: ")?;
-        // if term::isatty() {
-        //     write!(f, "{}: ", self.wrapped.type_name.bright_red())?;
-        //     writeln!(f, "{}", format!("{:?}", self.wrapped.err).bright_red())?;
-        // } else {
-        //     writeln!(f, "{}: {:?}", self.wrapped.type_name, self.wrapped.err)?;
-        // }
+        // Print out the backtrace frames
+        for frame in frames {
 
-        // // Print out the backtrace frames
-        // for frame in frames {
+            // Add the symbol and file information
+            write!(f, "symbol: {}", c.cyan(&frame.symbol))?;
+            write!(f, "    at: {}", frame.filename)?;
 
-        //     // Add the symbol and file information
-        //     write!(f, "symbol: ")?;
-        //     if term::isatty() {
-        //         writeln!(f, "{}", frame.symbol.bright_cyan())?;
-        //     } else {
-        //         writeln!(f, "{}", frame.symbol)?;
-        //     }
-        //     write!(f, "    at: {}", frame.filename)?;
-
-        //     // Add the line and columen if they exist
-        //     if let Some(line) = frame.lineno {
-        //         write!(f, ":{}", line)?;
-        //         if let Some(column) = frame.column {
-        //             write!(f, ":{}", column)?;
-        //         }
-        //     }
-        //     write!(f, "\n")?;
-        // }
+            // Add the line and columen if they exist
+            if let Some(line) = frame.lineno {
+                write!(f, ":{}", line)?;
+                if let Some(column) = frame.column {
+                    write!(f, ":{}", column)?;
+                }
+            }
+            write!(f, "\n")?;
+        }
         Ok(())
     }
 }
@@ -195,16 +181,14 @@ impl std::error::Error for Error
 /// Provides the same formatting for output as Display but includes the fullstack trace.
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt(f)
-        //self.fmt(f, self.backtrace.iter())
+        self.fmt(f, self.backtrace.iter())
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt(f)
-        //self.fmt(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
+        self.fmt(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
     }
 }
 

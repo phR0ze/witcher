@@ -8,7 +8,7 @@ fn do_something() -> Result<()> {
 
 // Add additional context
 fn do_another_thing() -> Result<()> {
-    //do_third_thing().wrap("2nd wrap")
+    //do_final_thing().wrap("2nd wrap")
     match do_final_thing() {
         Err(e) => {
             Error::wrap_box(e, "1st wrap")

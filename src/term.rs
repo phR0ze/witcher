@@ -24,4 +24,15 @@ impl Colorized {
             _ => ColoredString::default(),
         }
     }
+
+    pub fn cyan<M>(&self, msg: M) -> ColoredString
+    where
+        M: Display
+    {
+        match self.colorized {
+            true => format!("{}", msg).bright_cyan(),
+            _ => ColoredString::default(),
+        }
+    }
+
 }
