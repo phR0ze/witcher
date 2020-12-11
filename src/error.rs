@@ -149,7 +149,7 @@ impl Error {
         for frame in frames {
 
             // Add the symbol and file information
-            write!(f, "symbol: {}", c.cyan(&frame.symbol))?;
+            writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
             write!(f, "    at: {}", frame.filename)?;
 
             // Add the line and columen if they exist

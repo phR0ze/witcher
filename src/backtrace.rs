@@ -57,7 +57,7 @@ pub(crate) fn new() -> Vec<Frame> {
 }
 
 // Provide a convenient way to work with frame information
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Frame {
     pub symbol: String,         // name of the symbol or '<unknown>'
     pub filename: String,       // filename the symbole occurred in
@@ -99,6 +99,10 @@ fn simple_path(filename: Option<&Path>) -> String {
     return w
 }
 
+fn filter_other() {
+
+}
+
 // Helper to suppress unwanted result checks
 // -------------------------------------------------------------------------------------------------
 trait Omit {
@@ -118,12 +122,30 @@ impl Omit for std::fmt::Result {
 #[cfg(test)]
 mod tests {
     use super::*;
-     
+    
     #[test]
-    fn test_omit() {
-        let mut w = String::new();
-        write!(&mut w, "foobar").omit();
-    } 
+    fn test_frame_equality() {
+        let mut frame1 = Frame {
+            symbol: String::from("symbol"),
+            filename: String::from("filename"),
+            lineno: Some(1),
+            column: Some(2),
+        };
+
+        let frame2 = Frame {
+            symbol: String::from("symbol"),
+            filename: String::from("filename"),
+            lineno: Some(1),
+            column: Some(2),
+        };
+
+        assert_eq!(true, frame1 == frame2);
+        assert_eq!(frame1, frame2);
+
+        frame1.lineno = Some(3);
+        assert_eq!(true, frame1 != frame2);
+        assert_ne!(frame1, frame2);
+    }
 
     #[test]
     fn test_simple_path() {
@@ -133,4 +155,10 @@ mod tests {
         assert_eq!("/rustc/123/src/libstd/foobar", simple_path(Some(Path::new("/rustc/123/src/libstd").join("foobar").as_ref())));
         assert_eq!("<unknown>", simple_path(None));
     }
+
+    #[test]
+    fn test_omit() {
+        let mut w = String::new();
+        write!(&mut w, "foobar").omit();
+    } 
 }
