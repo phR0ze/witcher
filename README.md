@@ -302,6 +302,8 @@ References:
 * [Rust Fat Pointers](https://iandouglasscott.com/2018/05/28/exploring-rust-fat-pointers/)
 * [Storing unboxed trait objects in Rust](https://guiand.xyz/blog-posts/unboxed-trait-objects.html)
 * [Dynstack](https://github.com/archshift/dynstack/blob/master/src/lib.rs)
+* [Rust Error Tutorial](https://benkay86.github.io/rust-error-tutorial.html)
+* [std::io::Error](https://matklad.github.io/2020/10/15/study-of-std-io-error.html)
 
 ## Storing trait objects <a name="storing-trait-objects"/></a>
 

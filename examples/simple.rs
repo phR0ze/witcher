@@ -1,13 +1,15 @@
-// use witcher::prelude::*;
+use witcher::prelude::*;
 
-// fn do_something() -> Result<()> {
-//     do_another_thing().wrap("something")
-// }
+// Add additional context
+fn do_something() -> Result<()> {
+    do_another_thing().wrap("1st wrap")
+}
 
-// fn do_another_thing() -> Result<()> {
-//     Error::new("oh no!")
-// }
+// Originate a new simple error
+fn do_another_thing() -> Result<()> {
+    Error::new("oh no!")
+}
 
-// fn main() {
-//     println!("{}", do_something().unwrap_err());
-// }
+fn main() {
+    println!("{}", do_something().unwrap_err());
+}

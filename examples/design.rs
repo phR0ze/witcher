@@ -1,4 +1,7 @@
 // Documenting the Wrapper concept design prototype here
+// 
+// 1. Provide `wrap` function for context that works on all StdErr types
+// 2. Provide `wrap` function for all Result
 // ---------------------------------------------------------------------------------------
 use std::fmt::{self, Display};
 
@@ -7,7 +10,7 @@ use std::fmt::{self, Display};
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 trait Wrapper<T, E> {
-    fn wrap<M>(self, msg: M) -> Result<T>
+    fn wrap<M>(self, msg: M) -> Result<T, Error>
     where
         M: Display + Send + Sync + 'static;
 }
@@ -97,8 +100,9 @@ impl Error {
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
-        writeln!(f, "{}", self.msg)?;
+        write!(f, "{}", self.msg)?;
         if let Some(inner) = self.inner() {
+            write!(f, "\n")?;
             inner.fmt(f)?;
         }
         Ok(())
@@ -118,38 +122,36 @@ impl Display for Error {
     }
 }
 
-
 // Test design
 // ---------------------------------------------------------------------------------------
 
-fn std_do_something() -> Result<()> {
-    std_do_another_thing().wrap("2nd wrap")
+fn test_error_as_origin() {
+    fn do_something() -> Result<()> {
+        do_another_thing().wrap("2nd wrap")
+    }
+    fn do_another_thing() -> Result<()> {
+        do_final_thing().wrap("1st wrap")
+    }
+    fn do_final_thing() -> Result<()> {
+        Error::new("root")
+    }
+    assert_eq!("2nd wrap\n1st wrap\nroot", format!("{}", do_something().unwrap_err()));
 }
 
-fn std_do_another_thing() -> Result<()> {
-    std_do_final_thing().wrap("1st wrap")
-}
-
-fn std_do_final_thing() -> Result<(), SquircleErr> {
-    Err(SquircleErr{inner: Some(Box::new(CircleErr))})
-}
-
-fn do_something() -> Result<()> {
-    do_another_thing().wrap("2nd wrap")
-}
-
-fn do_another_thing() -> Result<()> {
-    do_final_thing().wrap("1st wrap")
-}
-
-fn do_final_thing() -> Result<()> {
-    Error::new("root")
+fn test_error_as_stderr() {
+    fn do_something() -> Result<()> {
+        do_another_thing().wrap("2nd wrap")
+    }
+    fn do_another_thing() -> Result<()> {
+        do_final_thing().wrap("1st wrap")
+    }
+    fn do_final_thing() -> Result<(), SquircleErr> {
+        Err(SquircleErr{inner: Some(Box::new(CircleErr))})
+    }
+    assert_eq!("2nd wrap\n1st wrap\nsquircle", format!("{}", do_something().unwrap_err()));
 }
 
 fn main() {
-    println!("Test StdErr origin");
-    println!("{}", std_do_something().unwrap_err());
-
-    println!("\nTest Error origin");
-    println!("{}", do_something().unwrap_err());
+    test_error_as_origin();
+    test_error_as_stderr();
 }
