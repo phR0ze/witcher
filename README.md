@@ -22,10 +22,12 @@ Track and put down bugs using simple concise error handling
   * [Default value](#default-value)
   * [Coerce errors](#coerce-errors)
   * [Downcast errors](#downcast-errors)
-* [Unsafe Rust](#unsafe-rust)
-  * [Transmutting](#transmutting)
-    * [Trait Object](#trait-object)
+* [Trait Objects](#trait-objects)
+  * [Storing trait objects](#storing-trait-objects)
+  * [Fat pointers](#fat-pointers)
+  * [Dynamic Dispatch](#dynamic-dispatch)
     * [vtable](#vtable)
+  * [Transmutting](#transmutting)
   * [Data layouts](#data-layouts)
     * [Size and Alignment](#size-and-alignment)
     * [repr(C)](#repr-c)
@@ -276,63 +278,105 @@ fn main() {
 ### Downcase errors <a name="downcast-errors"/></a>
 When handling errors its often useful to take a boxed error and 
 
-# Unsafe Rust <a name="unsafe-rust"/></a>
-Simply documenting my foray into the world of `unsafe` Rust as pertains to type manipulation for
-errors.  `unsafe` indicates the existence of functions and trait declarations not checked by the
-compiler and instead must be manually hand checked. You can use `unsafe` on a trait to declare that
-the implementation upholds the trait's contract.
-
-The standard library has a number of unsafe functions, including:
-* `slice::get_unchecked` which performs unchecked indexing, allowing memory safety to be freely
-  violated.
-* `mem::transmute` reinprets some value as having a given type, bypassing type safety in arbitrary
-  ways.
-* `Send` is a trait that promises implementors are safe to send i.e. move to another thread
-* `Sync` is a trait that promises threads can safely share implementors through a reference
-* `GlobalAlloc` allows customizing the memory allocator of the whole program
-
-* vtable
-* fat pointer
-* trait object
+# Trait Objects <a name="trait-objects"/></a>
+Typically most Rust discussion around `Dynamically Sized Types (DSTs)` and Traits generally use the
+term `Traits` to discuss Rust's notion of interfaces and DST to discuss the quirks around Rust
+implementation specifics of unsized types. I'm going to narrow in on `Traits` as it relates to DSTs
+and use the term `Trait Object` to refer to this; which happens to also be a term used in the Rust
+community to describe the `fat pointer` used to work with such instances. Often the terms get
+conflated and used interchangably. At any rate I'll use the term to describe what I'm attempting to
+do which is store an instance of concrete type in its generic `Trait` form inside a struct for later
+hydration into its former concrete type. 
 
 References:
+* [DST Explanation](https://stackoverflow.com/questions/25740916/how-do-you-actually-use-dynamically-sized-types-in-rust)
+* [DST, Take 5](https://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/)
+* [Safe DST Coercion](https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md)
 * [Rustonomicon Book](https://doc.rust-lang.org/nomicon/index.html)
 * [Type Conversions](https://doc.rust-lang.org/nomicon/conversions.html)
 * [Casts](https://doc.rust-lang.org/nomicon/casts.html)
 * [Transmutes](https://doc.rust-lang.org/nomicon/transmutes.html)
 * [Dynamic Dispatch](https://alschwalm.com/blog/static/2017/03/07/exploring-dynamic-dispatch-in-rust/)
 * [Trait Objects](https://doc.rust-lang.org/1.8.0/book/trait-objects.html)
+* [Fat vs inner pointers](https://tratt.net/laurie/blog/entries/a_quick_look_at_trait_objects_in_rust.html)
+* [Rust Fat Pointers](https://iandouglasscott.com/2018/05/28/exploring-rust-fat-pointers/)
+* [Storing unboxed trait objects in Rust](https://guiand.xyz/blog-posts/unboxed-trait-objects.html)
+* [Dynstack](https://github.com/archshift/dynstack/blob/master/src/lib.rs)
 
-## Transmutting <a name="transmutting"/></a>
-At the end of the day everything is just a pile of bits somewhere and the type systems are just there
-to help us use those bits the right way. There are two common problems with typing bits: needing to
-reinterpret those exact bits as a different type and needing to change the bits to have equivalent
-meaning for a different type. Transmutation is used to manually reinterpret the underlying data
-layout to perform our own typing. To be clear this is one of the most horribly unsafe things you can
-do in Rust and the ways to cause undefined behavior are mind boggling.
+## Storing trait objects <a name="storing-trait-objects"/></a>
 
-`mem::transmute<T, U>` takes a value of type `T` and reinterpretes it to have a type `U`. The only
-restriction is that the `T` and `U` are verified to have the same size.
+## Fat pointers <a name="fat-pointers"/></a>
+Trait objects are `fat pointers` meaning they are two words in size.  The first word is a pointer to
+the actual `object data` and the second word is a pointer to the `vtable`. This fat pointer to our
+trait type can be obtained by `casting` e.g. `&x as &Foo` or by `coercing` e.g. using `&x` as an
+argument to a function that takes a `&Foo`.
 
-Pitfalls:
-* Creating an instance of any type with an invalid state is going to cause undeterminted chaos
-* Not specifying the return type may cause chaos
-* Transmuting a `&` to a `&mut` is no bueno
-* Transmuting to a reference without an explicit lifetime produces an ubounded lifetime
-* Compound types must have the same layout or the wrong fields will get the wrong data
-  * Solution: use `repr(C)` which has precise data layout
+This operation can be see as `erasing` the compiler's knoweledge about the specific type of the
+pointer, and hence trait objects are sometimes referreed to as `type erasure`. A function that takes
+a trait object without generic parameterization i.e. `<T>` will not create specialized functions for
+each type saving code bloat, but will instead use a slower vtable to track the implementation
+functions.
 
-Benefits:
-* Essentially free performance wise
+```rust
+trait Foo {
+  do_seomthing();
+}
+
+fn do_something(x: &Foo) {
+    x.method();
+}
+fn main() {
+    let x = 5u8;
+    do_something(&x);         // coercion
+    do_something(&x as &Foo); // casting
+}
+```
 
 
-### Trait Object <a name="trait-object"/></a>
+Coercing a trait object into a fat pointer will add the vtable and double the size:
+```rust
+use std::mem::size_of;
+
+trait Foo { }
+
+fn main() {
+    assert_eq!(size_of::<&bool>(), size_of::<usize>());
+    assert_eq!(size_of::<&dyn Foo>(), size_of::<usize>() * 2);
+}
+```
+
+
+## Trait Pointer <a name="trait-pointer"/></a>
+Instantiating a DST cannot be done directly instead it is done by coercing an existing instance
+of a statically sized type into a DST. Essentially the compiler will erase static type information
+and convert the static dispatch into a vtable and add it to a resulting fat pointer.
+
+The smart pointer `std::rc::Rc` can be used as an example as it already has an implementation to do
+the coercion from a sized to unsized type. In this example we create a statically typed version of
+`Bar` and coerce it to the DST `Foo`.
+
+```rust
+use std::rc::Rc;
+
+trait Foo {
+    fn foo(&self) {
+        println!("foo")
+    }
+}
+struct Bar;
+impl Foo for Bar {}
+
+fn main() {
+    let data: Rc<dyn Foo> = Rc::new(Bar);
+    data.foo();
+}
+```
+
+## Dynamic Dispatch <a name="dynamic-dispatch"/></a>
 In `polymorphism` the mechanism to determine which version is run is called `dispatch`. While Rust
 favors `static dispatch` it also supports dynamic dispatch through `trait objects`.
 
-References:
-* [unboxed trait objects](https://guiand.xyz/blog-posts/unboxed-trait-objects.html)
-
+**Static Dispatch**:  
 Rust uses `monomorphization` or `specialization` to perform static dispatch using trait bounds in the
 following case.  This means that Rust will create a new version of `do_something` for each type used
 and compile that in e.g. `do_something(x: String)` or `do_something(x: i32)` depending on what types
@@ -344,12 +388,13 @@ fn do_something<T: Foo>(x: T) {
 }
 ```
 
+**Dynamic Dispatch**:  
 Dynamic dispatch is used for trait objects like `&Foo` or `Box<Foo>` where your storing a value of
 any type that implements the given trait, where the precise type can only be known at runtime. A
 trait object can be obtained from a pointer to a concrete type that implements the trait by `casting`
 it e.g. `&x as &Foo` or `coercing` it e.g. using `&x` as an argument to a function that takes `&Foo`.
 
-This operation can be see and `erasing` the compiler's knoweledge about the specific type of the
+This operation can be see as `erasing` the compiler's knoweledge about the specific type of the
 pointer, and hence trait objects are sometimes referreed to as `type erasure`. A function that takes
 a trait object without generic parameterization i.e. `<T>` will not create specialized functions for
 each type saving code bloat, but requiring slower virtual function calls by inhibiting inlining.
@@ -363,9 +408,6 @@ fn main() {
     do_something(&x as &Foo); // casting
 }
 ```
-
-A pointer to a trait object encodes both its data address and its vtable address i.e. they are a
-`fat pointer` and on a 64 bit system takes up 128 bits total for its two addresses.
 
 ### vtable <a name="vtable"/></a>
 The methods of the trait can be called on the trait object via a special record function pointers
@@ -424,6 +466,28 @@ internal type when they go out of scope. The `size` and `align` fields store the
 type and its alignment requirements; these are unused at the moment as the information is embedded in
 the destructor, but will be used in the future as trait objects are made more flexible.
 
+## Transmutting <a name="transmutting"/></a>
+At the end of the day everything is just a pile of bits somewhere and the type systems are just there
+to help us use those bits the right way. There are two common problems with typing bits: needing to
+reinterpret those exact bits as a different type and needing to change the bits to have equivalent
+meaning for a different type. Transmutation is used to manually reinterpret the underlying data
+layout to perform our own typing. To be clear this is one of the most horribly unsafe things you can
+do in Rust and the ways to cause undefined behavior are mind boggling.
+
+`mem::transmute<T, U>` takes a value of type `T` and reinterpretes it to have a type `U`. The only
+restriction is that the `T` and `U` are verified to have the same size.
+
+Pitfalls:
+* Creating an instance of any type with an invalid state is going to cause undeterminted chaos
+* Not specifying the return type may cause chaos
+* Transmuting a `&` to a `&mut` is no bueno
+* Transmuting to a reference without an explicit lifetime produces an ubounded lifetime
+* Compound types must have the same layout or the wrong fields will get the wrong data
+  * Solution: use `repr(C)` which has precise data layout
+
+Benefits:
+* Essentially free performance wise
+
 ## Data layouts <a name="data-layouts"/></a>
 The layout of a type is its `size`, `alignment` and the `relative offsets of its fields`. For enums,
 how the discriminant is laid out and interpreted is also part of the type layout.
@@ -444,12 +508,6 @@ of a value can be checked with the `align_of_val` function.
 The `size` of a value is the offset in bytes between successive elements in an array with that item
 type including alignment padding. The size of a value is always a multiple of its alignment. The size
 of a value can be checked with the `size_of_val` function.
-
-Types where all values have hte same size and alignment known at compile time implement the `Sized`
-trait and can be checked with the `size_of` and `align_of` functions. Types that are not `Sized` are
-known as `dynamically sized types` or `DST` or informally as an `unsized` type. Slices and trait
-objects are two examples of DSTs. Such types can only be used in certain cases. Structs may contain a
-DST as the last field, this makes the struct itself a DST.
 
 `usize` and `isize` have a size big enough to contain every address on the target platform i.e. on a
 32 bit target this value is `4 bytes` and on a 64 bit target this value is `8 bytes`.
