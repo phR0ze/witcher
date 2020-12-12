@@ -65,6 +65,7 @@ impl Error {
 
         // Filter wrapped backtrace to remove duplicate entries from current
         if type_id == TypeId::of::<Error>() {
+            // (err as (dyn StdError + 'static)).downcast_ref::<Error>();
             //backtrace = backtrace.iter().filter().collect();
         }
 
@@ -131,11 +132,24 @@ impl Error {
         let mut cause: Option<String> = None;
 
         // Print inner error first
-        if let Some(inner) = (self as &dyn StdError).source() {
+        let mut source = (self as &dyn StdError).source();
+        if let Some(inner) = source {
             if self.type_id == TypeId::of::<Error>() {
                 Display::fmt(&inner, f)?;
             } else {
-                cause = Some(format!(" cause: {}: {}", c.red(&self.type_name), c.red(&inner)));
+                let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&inner));
+                source = inner.source();
+                while let Some(x) = source {
+                    // Ensure there is a newline break
+                    if buf.chars().last().unwrap() != '\n' {
+                        buf += &"\n";
+                    }
+
+                    // Write out the next error cause
+                    buf += &format!(" cause: {}", c.red(x));
+                    source = x.source();
+                }
+                cause = Some(buf);
             }
         }
 
@@ -205,46 +219,52 @@ impl Display for Error {
 //     }
 // }
 
-// impl From<Error> for Box<dyn StdError + Send + 'static> {
-//     fn from(error: Error) -> Self {
-//         Box::<dyn StdError + Send + Sync>::from(error)
-//     }
-// }
+// Unit tests
+// -------------------------------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
 
-// impl From<Error> for Box<dyn StdError + 'static> {
-//     fn from(error: Error) -> Self {
-//         Box::<dyn StdError + Send + Sync>::from(error)
-//     }
-// }
-
-// /// Convert to a reference 
-// impl AsRef<dyn StdError + Send + Sync> for Error {
-//     fn as_ref(&self) -> &(dyn StdError + Send + Sync + 'static) {
-//         &**self
-//     }
-// }
-// impl AsRef<dyn StdError> for Error {
-//     fn as_ref(&self) -> &(dyn StdError + 'static) {
-//         &**self
-//     }
-// }
-
-// // Unit tests
-// // -------------------------------------------------------------------------------------------------
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+    struct TestError {
+        msg: String,
+        inner: Option<Box<TestError>>
+    }
+    impl Debug for TestError {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}", self.msg)
+        }
+    }
+    impl Display for TestError {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            write!(f, "{}", self.msg)
+        }
+    }
+    impl StdError for TestError {
+        fn source(&self) -> Option<&(dyn StdError + 'static)>
+        {
+            match &self.inner {
+                Some(x) => Some(x as &dyn StdError),
+                None => None,
+            }
+        }
+    }
     
-//     fn io_error() -> crate::Result<()> {
-//         Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"))?
-//     }
-
-//     #[test]
-//     fn test_new() {
-//         assert_eq!(String::from("foo"), Error::new("foo").msg);
-//         //assert_eq!(String::from("foo"), Error::new(String::from("foo")).msg);
-//         //assert_eq!(String::from("foo"), Error::new(Path::new("foo").display()).msg);
-//     }
+    #[test]
+    fn test_chained_cause() {
+        env::set_var("COLOR", "0");
+        let err = TestError {
+            msg: "cause 1".to_string(),
+            inner: Some(Box::new(TestError{
+                msg: "cause 2".to_string(),
+                inner: Some(Box::new(TestError{
+                    msg: "cause 3".to_string(),
+                    inner: None
+                })),
+            })),
+        };
+        assert!(format!("{}", Error::wrap(err, "wrapped").unwrap_err()).starts_with(" error: wrapped\n cause: witcher::error::tests::TestError: cause 1\n cause: cause 2\n cause: cause 3\n"));
+    }
 
 //     #[test]
 //     fn test_conversion_from_io_error() {
@@ -256,4 +276,4 @@ impl Display for Error {
 //         //assert_eq!(err.msg, format!("{:?}", err.wrapped.unwrap()));
 //         //println!("Failed: {}", err);
 //     }
-// }
+}

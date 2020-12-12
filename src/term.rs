@@ -1,6 +1,9 @@
 use libc;
 use colored::*;
+use std::env;
 use std::fmt::Display;
+
+const NO_COLOR: &str = "0";
 
 /// detect if we are using a tty
 pub fn isatty() -> bool {
@@ -12,7 +15,11 @@ pub struct Colorized {
 }
 impl Colorized {
     pub fn new() -> Self {
-        Self { colorized: isatty() }
+        let mut colorized = isatty();
+        if &*env::var("COLOR").unwrap_or("1".to_string()) == NO_COLOR {
+            colorized = false;
+        }
+        Self { colorized }
     }
 
     pub fn red<M>(&self, msg: M) -> ColoredString
@@ -21,7 +28,7 @@ impl Colorized {
     {
         match self.colorized {
             true => format!("{}", msg).bright_red(),
-            _ => ColoredString::default(),
+            _ => format!("{}", msg).bright_red().clear(),
         }
     }
 
@@ -31,7 +38,7 @@ impl Colorized {
     {
         match self.colorized {
             true => format!("{}", msg).bright_cyan(),
-            _ => ColoredString::default(),
+            _ => format!("{}", msg).bright_cyan().clear(),
         }
     }
 
