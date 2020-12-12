@@ -3,6 +3,7 @@ use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
 use crate::term::Colorized;
 use crate::Result;
+use crate::backtrace::Frame;
 
 static ERROR_TYPE: &str = "witcher::Error";
 static STDERROR_TYPE: &str = "std::error::Error";
@@ -30,7 +31,7 @@ pub struct Error {
     type_name: String,
 
     // Backtrace for the error
-    backtrace: Vec<crate::backtrace::Frame>,
+    backtrace: Vec<Frame>,
 
     // Inner wrapped error
     inner: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
@@ -59,11 +60,13 @@ impl Error {
         E: std::error::Error + Send + Sync + 'static,
         M: Display + Send + Sync + 'static,
     {
+        let mut backtrace = crate::backtrace::new();
+
         Err(Error {
             msg: format!("{}", msg),
             type_id: TypeId::of::<E>(),
             type_name: Error::name(&err),
-            backtrace: crate::backtrace::new(),
+            backtrace: backtrace,
             inner: Some(Box::new(err)),
         })
     }
@@ -111,43 +114,40 @@ impl Error {
         TypeId::of::<E>() == self.type_id
     }
 
-    // /// Returns an Option of some reference to the wrapped error if it is of type `T`
-    // pub fn downcast_ref<E>(&self) -> Option<&E>
-    // where
-    //     E: std::error::Error + Send + Sync + 'static,
-    // {
-    //     match self.is::<E>() {
-    //         //true => Some(&*(self as *const dyn Error as *const T)),
-    //         true => Some(&*()),
-    //         _ => None,
-    //     }
-    // }
-
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    fn fmt<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
+    fn write_err<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
     where 
-        T: Iterator<Item = &'a crate::backtrace::Frame>,
+        T: Iterator<Item = &'a Frame>,
     {
         let c = Colorized::new();
+        let mut cause: Option<String> = None;
 
-        // Print out the error type and message
-        writeln!(f, " error: {}: {}", c.red(ERROR_TYPE), c.red(&self.msg))?;
-
-        // Print inner error type and message if it exists
-        if let Some(source) = (self as &dyn std::error::Error).source() {
+        // Print inner error first
+        if let Some(inner) = (self as &dyn std::error::Error).source() {
             if self.type_id == TypeId::of::<Error>() {
-                Display::fmt(&source, f)?;
+                Display::fmt(&inner, f)?;
             } else {
-                // Craft messaging for custom errors
-                writeln!(f, " error: {}: {}", c.red(&self.type_name), c.red(&source))?;
+                cause = Some(format!(" cause: {}: {}", c.red(&self.type_name), c.red(&inner)));
             }
         }
 
-        // Print out the backtrace frames
-        for frame in frames {
+        // Print out this error
+        writeln!(f, " error: {}", c.red(&self.msg))?;
+        if let Some(root_cause) = cause {
+            writeln!(f, "{}", root_cause)?;
+        }
+        self.write_frames(f, &c, frames)?;
+        Ok(())
+    }
 
+    // Write out the frames
+    fn write_frames<'a, T>(&self, f: &mut Formatter<'_>, c: &Colorized, frames: T) -> fmt::Result
+    where
+        T: Iterator<Item = &'a Frame>,
+    {
+        for frame in frames {
             // Add the symbol and file information
             writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
             write!(f, "    at: {}", frame.filename)?;
@@ -181,14 +181,14 @@ impl std::error::Error for Error
 /// Provides the same formatting for output as Display but includes the fullstack trace.
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt(f, self.backtrace.iter())
+        self.write_err(f, self.backtrace.iter())
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.fmt(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
+        self.write_err(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
     }
 }
 
