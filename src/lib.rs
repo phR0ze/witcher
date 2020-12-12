@@ -3,6 +3,7 @@ mod error;
 mod term;
 mod wrapper;
 
+use std::error::Error as StdError;
 pub use crate::error::Error;
 pub use crate::wrapper::Wrapper;
 

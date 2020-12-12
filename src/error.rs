@@ -1,12 +1,12 @@
+use crate::backtrace::Frame;
+use crate::{Result, StdError};
+use crate::term::Colorized;
 use std::any::TypeId;
 use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
-use crate::term::Colorized;
-use crate::Result;
-use crate::backtrace::Frame;
 
 static ERROR_TYPE: &str = "witcher::Error";
-static STDERROR_TYPE: &str = "std::error::Error";
+static STDERROR_TYPE: &str = "StdError";
 static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 
 /// `Error` is a wrapper around lower level error types to provide additional context.
@@ -34,7 +34,7 @@ pub struct Error {
     backtrace: Vec<Frame>,
 
     // Inner wrapped error
-    inner: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    inner: Option<Box<dyn StdError + Send + Sync + 'static>>,
 }
 impl Error {
 
@@ -57,14 +57,20 @@ impl Error {
     ///
     pub fn wrap<E, M>(err: E, msg: M) -> Result<()>
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: StdError + Send + Sync + 'static,
         M: Display + Send + Sync + 'static,
     {
-        let mut backtrace = crate::backtrace::new();
+        let type_id = TypeId::of::<E>();
+        let backtrace = crate::backtrace::new();
+
+        // Filter wrapped backtrace to remove duplicate entries from current
+        if type_id == TypeId::of::<Error>() {
+            //backtrace = backtrace.iter().filter().collect();
+        }
 
         Err(Error {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<E>(),
+            type_id: type_id,
             type_name: Error::name(&err),
             backtrace: backtrace,
             inner: Some(Box::new(err)),
@@ -73,13 +79,13 @@ impl Error {
 
     /// Wrap the given boxed error and include a contextual message for the error.
     ///
-    pub fn wrap_box<M>(err: Box<dyn std::error::Error + Send + Sync + 'static>, msg: M) -> Result<()>
+    pub fn wrap_box<M>(err: Box<dyn StdError + Send + Sync + 'static>, msg: M) -> Result<()>
     where
         M: Display + Send + Sync + 'static,
     {
         Err(Error {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<dyn std::error::Error>(),
+            type_id: TypeId::of::<dyn StdError>(),
             type_name: String::from(STDERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: Some(err),
@@ -109,7 +115,7 @@ impl Error {
     /// Returns `true` if the wrapped error type is the same as `E`
     pub fn is<E>(&self) -> bool
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: StdError + Send + Sync + 'static,
     {
         TypeId::of::<E>() == self.type_id
     }
@@ -125,7 +131,7 @@ impl Error {
         let mut cause: Option<String> = None;
 
         // Print inner error first
-        if let Some(inner) = (self as &dyn std::error::Error).source() {
+        if let Some(inner) = (self as &dyn StdError).source() {
             if self.type_id == TypeId::of::<Error>() {
                 Display::fmt(&inner, f)?;
             } else {
@@ -167,12 +173,12 @@ impl Error {
 
 // External trait implementations
 // -------------------------------------------------------------------------------------------------
-impl std::error::Error for Error
+impl StdError for Error
 {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)>
+    fn source(&self) -> Option<&(dyn StdError + 'static)>
     {
         match &self.inner {
-            Some(x) => Some(&(**x)),
+            Some(x) => Some(&**x),
             None => None,
         }
     }
@@ -193,12 +199,35 @@ impl Display for Error {
 }
 
 // /// Converts to Error from boxed std error
-// impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for Error {
-//     fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
+// impl From<Box<dyn StdError + Send + Sync + 'static>> for Error {
+//     fn from(err: Box<dyn StdError + Send + Sync + 'static>) -> Self {
 //         Error::wrap(err, "").unwrap_err()
 //     }
 // }
 
+// impl From<Error> for Box<dyn StdError + Send + 'static> {
+//     fn from(error: Error) -> Self {
+//         Box::<dyn StdError + Send + Sync>::from(error)
+//     }
+// }
+
+// impl From<Error> for Box<dyn StdError + 'static> {
+//     fn from(error: Error) -> Self {
+//         Box::<dyn StdError + Send + Sync>::from(error)
+//     }
+// }
+
+// /// Convert to a reference 
+// impl AsRef<dyn StdError + Send + Sync> for Error {
+//     fn as_ref(&self) -> &(dyn StdError + Send + Sync + 'static) {
+//         &**self
+//     }
+// }
+// impl AsRef<dyn StdError> for Error {
+//     fn as_ref(&self) -> &(dyn StdError + 'static) {
+//         &**self
+//     }
+// }
 
 // // Unit tests
 // // -------------------------------------------------------------------------------------------------

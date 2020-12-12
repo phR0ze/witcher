@@ -1,5 +1,4 @@
-use crate::Error;
-use crate::Result;
+use crate::{Error, Result, StdError};
 use std::fmt::Display;
 
 /// Define the `wrap` function for Result types
@@ -11,10 +10,10 @@ pub trait Wrapper<T> {
         M: Display + Send + Sync + 'static;
 }
 
-// Handle wrapping a std::error::Error
+// Handle wrapping a StdError
 impl<T, E> Wrapper<T> for Result<T, E>
 where 
-    E: std::error::Error + Send + Sync + 'static,
+    E: StdError + Send + Sync + 'static,
 {
     fn wrap<M>(self, msg: M) -> Result<T>
     where
@@ -24,8 +23,8 @@ where
     }
 }
 
-// // Box<(dyn std::error::Error + Send + Sync + 'static)>
-// impl<T> Wrapper<T> for std::result::Result<T, Box<(dyn std::error::Error + Send + Sync + 'static)>>
+// // Box<(dyn StdError + Send + Sync + 'static)>
+// impl<T> Wrapper<T> for std::result::Result<T, Box<(dyn StdError + Send + Sync + 'static)>>
 // {
 //     fn wrap<M>(self, msg: M) -> crate::Result<T>
 //     where
@@ -36,10 +35,10 @@ where
 //     }
 // }
 
-// // Handle wrapping a Box<(dyn std::error::Error + 'static)>
-// impl<T> Wrapper<T> for Result<T, Box<dyn std::error::Error + 'static>>
+// // Handle wrapping a Box<(dyn StdError + 'static)>
+// impl<T> Wrapper<T> for Result<T, Box<dyn StdError + 'static>>
 // where 
-//     E: std::error::Error + Send + Sync + 'static,
+//     E: StdError + Send + Sync + 'static,
 // {
 //     fn wrap<M>(self, msg: M) -> Result<T, Error>
 //     where
