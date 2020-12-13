@@ -81,7 +81,7 @@ impl Error {
     where
         M: Display + Send + Sync + 'static,
     {
-        Err(Error {
+        Err(Self {
             msg: format!("{}", msg),
             inner: None,
         })
@@ -92,7 +92,7 @@ impl Error {
         S: StdErr + Send + Sync + 'static,
         M: Display + Send + Sync + 'static,
     {
-        Err(Error {
+        Err(Self {
             msg: format!("{}", msg),
             inner: Some(Box::new(shape)),
         })

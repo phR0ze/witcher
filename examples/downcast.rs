@@ -1,38 +1,59 @@
 use std::any::Any;
+use std::fmt::Display;
 
 pub trait Downcaster {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub struct Wrapper {
-    inner: Box<dyn Downcaster>,
+pub struct Error {
+    msg: String,
+    inner: Option<Box<dyn Downcaster + Send + Sync + 'static>>,
 }
-impl Wrapper {
-    pub fn new<D>(bar: D) -> Self
+impl Error {
+    pub fn new<M>(msg: M) -> Self
     where
-        D: Downcaster + 'static
+        M: Display + Send + Sync + 'static
     {
-        Self { inner: Box::new(bar) }
+        Self {
+            msg: format!("{}", msg),
+            inner: None,
+        }
     }
 
-    pub fn downcast_mut<D>(&mut self) -> Option<&mut D>
+    pub fn wrap<E, M>(err: E, msg: M) -> Self
     where
-        D: Downcaster + 'static
+        E: Downcaster + Send + Sync + 'static,
+        M: Display + Send + Sync + 'static
     {
-        self.inner.as_any_mut().downcast_mut::<D>()
+        Self {
+            msg: format!("{}", msg),
+            inner: Some(Box::new(err)),
+        }
+    }
+
+    pub fn downcast_mut<E>(&mut self) -> Option<&mut E>
+    where
+        E: Downcaster + 'static
+    {
+        match &mut self.inner {
+            Some(inner) => inner.as_any_mut().downcast_mut::<E>(),
+            None => None,
+        }
     }
 }
-
-pub struct Item {
-    data: String,
-}
-impl Downcaster for Item {
+impl Downcaster for Error {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
 
 fn main() {
-    let mut wrapper = Wrapper::new(Item{data: "foo".to_string()});
-    println!("{}", wrapper.downcast_mut::<Item>().unwrap().data);
+    let mut wrapper = Error::wrap(Error::new("msg1"), "msg2");
+    let err1 = wrapper.downcast_mut::<Error>().unwrap();
+    println!("{}", err1.msg);
+    err1.msg += " - modified it foo";
+    println!("{}", err1.msg);
+    println!("{}", wrapper.msg);
+    let err2 = wrapper.downcast_mut::<Error>().unwrap();
+    println!("{}", err2.msg);
 }
