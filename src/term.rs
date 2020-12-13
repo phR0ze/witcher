@@ -10,6 +10,8 @@ pub fn isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
 }
 
+/// Provides colored with a tty aware wrapper and an option to disable
+/// colors.
 pub struct Colorized {
     colorized: bool,
 }

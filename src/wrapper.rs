@@ -1,4 +1,5 @@
 use crate::{Error, Result, StdError};
+use std::any::TypeId;
 use std::fmt::Display;
 
 /// Define the `wrap` function for Result types
@@ -19,7 +20,14 @@ where
     where
         M: Display + Send + Sync + 'static,
     {
-        self.map_err(|err| Error::wrap(err, msg).unwrap_err())
+        self.map_err(|err| {
+            Error::wrap_err(err, msg).unwrap_err()
+            // if TypeId::of::<E>() == TypeId::of::<Error>() {
+            //     // Error::wrap(err, msg).unwrap_err()
+            // } else {
+            //     Error::wrap_err(err, msg).unwrap_err()
+            // }
+        })
     }
 }
 

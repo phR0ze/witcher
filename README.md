@@ -306,6 +306,26 @@ References:
 * [std::io::Error](https://matklad.github.io/2020/10/15/study-of-std-io-error.html)
 
 ## Storing trait objects <a name="storing-trait-objects"/></a>
+Storing trait object is best done in a Box or using lifetimes.
+
+Example with lifetimes:
+```rust
+struct Foo<'a> {
+  inner: &'a (dyn std::error::Error + Send + Sync + 'static)
+}
+```
+Lifetimes wasn't ideal as it required a lifetime change to the `Result` alias I was building which
+was a no go imo as it would affect all code that touched it.
+```rust
+type Result<T, E = Error> = std::result::Result<T, E>;
+```
+
+Exmample with Box:
+```rust
+struct Foo {
+  inner: Box<dyn std::error::Error + Send + Sync + 'static>
+}
+```
 
 ## Fat pointers <a name="fat-pointers"/></a>
 Trait objects are `fat pointers` meaning they are two words in size.  The first word is a pointer to
