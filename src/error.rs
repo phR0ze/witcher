@@ -1,7 +1,7 @@
 use crate::backtrace::Frame;
 use crate::{Result, StdError};
 use crate::term::Colorized;
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -34,8 +34,8 @@ pub struct Error {
     backtrace: Vec<Frame>,
 
     // Inner wrapped error
-    inner: Option<Box<Error>>,
-    oldinner: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    inner: Option<Box<dyn Any + Send + Sync + 'static>>,
+    error: Option<Box<dyn StdError + Send + Sync + 'static>>,
 }
 impl Error {
 
@@ -45,52 +45,47 @@ impl Error {
     where 
         M: Display + Debug + Send + Sync + 'static
     {
-        Err(Error {
+        Err(Self {
             msg: format!("{}", msg),
             type_id: TypeId::of::<Error>(),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
-            oldinner: None,
+            error: None,
         })
     }
 
     /// Wrap the given error and include a contextual message for the error.
     ///
-    pub fn wrap<M>(err: Error, msg: M) -> Result<()>
-    where
-        M: Display + Send + Sync + 'static,
-    {
-        let backtrace = crate::backtrace::new();
-
-        // Filter wrapped backtrace to remove duplicate entries from current
-        // (err as (dyn StdError + 'static)).downcast_ref::<Error>();
-        //backtrace = backtrace.iter().filter().collect();
-
-        Err(Error {
-            msg: format!("{}", msg),
-            type_id: TypeId::of::<Error>(),
-            type_name: Error::name(&err),
-            backtrace: backtrace,
-            inner: None,
-            oldinner: Some(Box::new(err)),
-        })
-    }
-
-    /// Wrap the given error and include a contextual message for the error.
-    ///
-    pub fn wrap_err<E, M>(err: E, msg: M) -> Result<()>
+    pub fn wrap<E, M>(err: E, msg: M) -> Result<()>
     where
         E: StdError + Send + Sync + 'static,
         M: Display + Send + Sync + 'static,
     {
-        Err(Error {
+        let type_id = TypeId::of::<E>();
+        let type_name = Error::name(&err);
+
+        // Set the appropriate inner value
+        let mut inner: Option<Box<dyn Any + Send + Sync + 'static>> = None;
+        let mut error: Option<Box<dyn StdError + Send + Sync + 'static>> = None;
+        if type_id == TypeId::of::<Error>() {
+            inner = Some(Box::new(err));
+        } else {
+            error = Some(Box::new(err));
+        }
+
+        // Filter wrapped backtrace to remove duplicate entries from current
+        let backtrace = crate::backtrace::new();
+        // (err as (dyn StdError + 'static)).downcast_ref::<Error>();
+        //backtrace = backtrace.iter().filter().collect();
+
+        Err(Self {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<E>(),
-            type_name: Error::name(&err),
-            backtrace: crate::backtrace::new(),
-            inner: None,
-            oldinner: Some(Box::new(err)),
+            type_id,
+            type_name,
+            backtrace,
+            inner,
+            error,
         })
     }
 
@@ -100,13 +95,13 @@ impl Error {
     where
         M: Display + Send + Sync + 'static,
     {
-        Err(Error {
+        Err(Self {
             msg: format!("{}", msg),
             type_id: TypeId::of::<dyn StdError>(),
             type_name: String::from(STDERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
-            oldinner: Some(err),
+            error: Some(err),
         })
     }
 
@@ -138,6 +133,15 @@ impl Error {
         TypeId::of::<E>() == self.type_id
     }
 
+    /// Returns the inner error as Some error reference if it exists else None
+    pub fn downcast_ref(&self) -> Option<&Error>
+    {
+        match self.inner.as_ref() {
+            Some(inner) => inner.downcast_ref::<Error>(),
+            None => None,
+        }
+    }
+
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
@@ -150,27 +154,27 @@ impl Error {
 
         // Print inner error first
         let mut source = (self as &dyn StdError).source();
-        if let Some(inner) = source {
-            if self.type_id == TypeId::of::<Error>() {
-                Display::fmt(&inner, f)?;
-            } else {
-                let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&inner));
-                source = inner.source();
-                while let Some(x) = source {
-                    // Ensure there is a newline break
-                    if buf.chars().last().unwrap() != '\n' {
-                        buf += &"\n";
-                    }
-
-                    // Write out the next error cause
-                    buf += &format!(" cause: {}", c.red(x));
-                    source = x.source();
+        if let Some(error) = self.downcast_ref() {
+            Display::fmt(error, f)?;
+        } else if let Some(error) = source {
+            let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&error));
+            source = error.source();
+            while let Some(error) = source {
+                if buf.chars().last().unwrap() != '\n' {
+                    buf += &"\n";
                 }
-                cause = Some(buf);
+
+                // Write out the next error cause
+                buf += &format!(" cause: {}", c.red(error));
+                source = error.source();
             }
+            if buf.chars().last().unwrap() != '\n' {
+                buf += &"\n";
+            }
+            cause = Some(buf);
         }
 
-        // Print out this error
+        // Print outer error
         writeln!(f, " error: {}", c.red(&self.msg))?;
         if let Some(root_cause) = cause {
             writeln!(f, "{}", root_cause)?;
@@ -208,7 +212,7 @@ impl StdError for Error
 {
     fn source(&self) -> Option<&(dyn StdError + 'static)>
     {
-        match &self.oldinner {
+        match &self.error {
             Some(x) => Some(&**x),
             None => None,
         }
@@ -280,7 +284,7 @@ mod tests {
                 })),
             })),
         };
-        assert!(format!("{}", Error::wrap_err(err, "wrapped").unwrap_err()).starts_with(" error: wrapped\n cause: witcher::error::tests::TestError: cause 1\n cause: cause 2\n cause: cause 3\n"));
+        assert!(format!("{}", Error::wrap(err, "wrapped").unwrap_err()).starts_with(" error: wrapped\n cause: witcher::error::tests::TestError: cause 1\n cause: cause 2\n cause: cause 3\n"));
     }
 
 //     #[test]
