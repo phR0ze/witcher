@@ -23,7 +23,7 @@ Track and put down bugs using simple concise error handling
   * [Coerce errors](#coerce-errors)
   * [Downcast errors](#downcast-errors)
 * [Trait Objects](#trait-objects)
-  * [Storing trait objects](#storing-trait-objects)
+  * [Casting trait objects](#casting-trait-objects)
   * [Fat pointers](#fat-pointers)
   * [Dynamic Dispatch](#dynamic-dispatch)
     * [vtable](#vtable)
@@ -304,26 +304,51 @@ References:
 * [Dynstack](https://github.com/archshift/dynstack/blob/master/src/lib.rs)
 * [Rust Error Tutorial](https://benkay86.github.io/rust-error-tutorial.html)
 * [std::io::Error](https://matklad.github.io/2020/10/15/study-of-std-io-error.html)
+* [Casting Traits](http://idubrov.name/rust/2018/06/16/dynamic-casting-traits.html)
 
-## Storing trait objects <a name="storing-trait-objects"/></a>
-Storing trait object is best done in a Box or using lifetimes.
+## Casting trait objects <a name="storing-trait-objects"/></a>
+When a trait function is accessed the Rust compiler will generate code to destructure the trait
+object into a fat pointer. Then it will lookup the virtual function table to get the address of the
+function to call (each function is assigned a unique slot in the `vtable` so its just a matter of
+indexing in. Finally the compiler generated code will call the function and provide it with a pointer
+to the data as the first parameter i.e. `&self`.
 
-Example with lifetimes:
+References:
+* `Box`, `Rc`, `Any`
+* [Rust Any downcast](https://doc.rust-lang.org/1.26.2/src/core/any.rs.html#196-204)
+
 ```rust
-struct Foo<'a> {
-  inner: &'a (dyn std::error::Error + Send + Sync + 'static)
+pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    if self.is::<T>() {
+        unsafe {
+            Some(&*(self as *const Any as *const T))
+        }
+    } else {
+        None
+    }
 }
 ```
-Lifetimes wasn't ideal as it required a lifetime change to the `Result` alias I was building which
-was a no go imo as it would affect all code that touched it.
-```rust
-type Result<T, E = Error> = std::result::Result<T, E>;
 ```
-
-Exmample with Box:
-```rust
-struct Foo {
-  inner: Box<dyn std::error::Error + Send + Sync + 'static>
+// Following the std::raw::TraitObject pattern rather than using directly since it is nightly-only
+// currently and I don't want to require that.
+// https://github.com/rust-lang/rfcs/pull/2580
+// https://github.com/rust-lang/rust/issues/27751
+// https://doc.rust-lang.org/src/core/raw.rs.html
+// https://doc.rust-lang.org/std/raw/struct.TraitObject.html
+//
+// This struct has the same internal layout as Trait DSTs e.g. &dyn Wrapper and Box<dyn Wrapper>
+// allowing you to deconstruct a Trait DST into its raw constituent parts that will no longer be
+// managed by the Rust memory management system and needs to be handled manually.
+//
+// TraitObject is guaranteed to match layouts by using the alternate repr(C) data representation to
+// get a reliable layout and thus can be used as targets for transmutes in unsafe code for
+// manipulating the raw representations directly. The only way to create values of this type is with
+// functions like std::mem::transmute. Similarly, the only way to create a true trait object from a
+// TraitObject value is with transmute.
+#[repr(C)]
+struct TraitObject {
+    data: *mut (),
+    vtable: *mut (),
 }
 ```
 
@@ -364,33 +389,6 @@ trait Foo { }
 fn main() {
     assert_eq!(size_of::<&bool>(), size_of::<usize>());
     assert_eq!(size_of::<&dyn Foo>(), size_of::<usize>() * 2);
-}
-```
-
-
-## Trait Pointer <a name="trait-pointer"/></a>
-Instantiating a DST cannot be done directly instead it is done by coercing an existing instance
-of a statically sized type into a DST. Essentially the compiler will erase static type information
-and convert the static dispatch into a vtable and add it to a resulting fat pointer.
-
-The smart pointer `std::rc::Rc` can be used as an example as it already has an implementation to do
-the coercion from a sized to unsized type. In this example we create a statically typed version of
-`Bar` and coerce it to the DST `Foo`.
-
-```rust
-use std::rc::Rc;
-
-trait Foo {
-    fn foo(&self) {
-        println!("foo")
-    }
-}
-struct Bar;
-impl Foo for Bar {}
-
-fn main() {
-    let data: Rc<dyn Foo> = Rc::new(Bar);
-    data.foo();
 }
 ```
 

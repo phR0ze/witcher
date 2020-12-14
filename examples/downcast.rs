@@ -1,13 +1,19 @@
 use std::any::Any;
 use std::fmt::{Debug, Display};
 
+trait Downcaster {
+    fn downcast_mut<E>(&mut self) -> Option<&mut E>
+    where
+        E: Debug + Send + Sync + 'static;
+}
+
 #[derive(Debug)]
-pub struct Error {
+struct Error {
     msg: String,
     inner: Option<Box<dyn Any + Send + Sync + 'static>>,
 }
 impl Error {
-    pub fn new<M>(msg: M) -> Self
+    fn new<M>(msg: M) -> Self
     where
         M: Display + Send + Sync + 'static
     {
@@ -17,7 +23,7 @@ impl Error {
         }
     }
 
-    pub fn wrap<E, M>(err: E, msg: M) -> Self
+    fn wrap<E, M>(err: E, msg: M) -> Self
     where
         E: Debug + Send + Sync + 'static,
         M: Display + Send + Sync + 'static
@@ -27,8 +33,9 @@ impl Error {
             inner: Some(Box::new(err)),
         }
     }
-
-    pub fn downcast_mut<E>(&mut self) -> Option<&mut E>
+}
+impl Downcaster for Error {
+    fn downcast_mut<E>(&mut self) -> Option<&mut E>
     where
         E: Debug + Send + Sync + 'static
     {

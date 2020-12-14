@@ -9,36 +9,41 @@ static ERROR_TYPE: &str = "witcher::Error";
 static STDERROR_TYPE: &str = "StdError";
 static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 
-/// `Error` is a wrapper around lower level error types to provide additional context.
+/// `Error` is a wrapper providing additional context and chaining of errors.
 /// 
 /// `Error` provides the following benefits
 ///  - ensures a backtrace will be taken at the earliest opportunity
 ///  - ensures that the error type is threadsafe and has a static lifetime
-///  - provides matching on error types
+///  - provides matching on inner error types
 /// 
 /// Context comes in two forms. First every time an error is wrapped you have the
 /// opportunity to add an additional message. Finally a simplified stack trace is
 /// automatically provided that narrows in on your actual code ignoring the wind up
 /// and wind down that resides in the Rust std libraries and other dependencies
 /// allowing you to focus on your code.
-pub struct Error {
-
-    // Error messages
+/// 
+/// Saftey: data layout ensured to be consistent with repr(C) for raw conversions.
+#[repr(C)]
+pub struct Error
+{
+    // Error message which will either be additional context for the inner error
+    // or in the case where this error was created from `new` will be the only
+    // error message.
     msg: String,
 
-    // Original error type and name
+    // Type id and type name here will refer to the inner error in the case where
+    // inner error is Some and is an external type else it will be `Error`. 
     type_id: TypeId,
     type_name: String,
 
-    // Backtrace for the error
     backtrace: Vec<Frame>,
 
-    // Inner wrapped error
-    inner: Option<Box<dyn Any + Send + Sync + 'static>>,
-    error: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    // The original error in the case where we're wrapping an external error or
+    // an `Error` in the case where we're wrapping another `Error`.
+    inner: Option<Box<dyn StdError + Send + Sync + 'static>>,
 }
-impl Error {
-
+impl Error
+{
     /// Create a new error instance using generics.
     /// 
     pub fn new<M>(msg: M) -> Result<()>
@@ -51,7 +56,6 @@ impl Error {
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
-            error: None,
         })
     }
 
@@ -62,30 +66,12 @@ impl Error {
         E: StdError + Send + Sync + 'static,
         M: Display + Send + Sync + 'static,
     {
-        let type_id = TypeId::of::<E>();
-        let type_name = Error::name(&err);
-
-        // Set the appropriate inner value
-        let mut inner: Option<Box<dyn Any + Send + Sync + 'static>> = None;
-        let mut error: Option<Box<dyn StdError + Send + Sync + 'static>> = None;
-        if type_id == TypeId::of::<Error>() {
-            inner = Some(Box::new(err));
-        } else {
-            error = Some(Box::new(err));
-        }
-
-        // Filter wrapped backtrace to remove duplicate entries from current
-        let backtrace = crate::backtrace::new();
-        // (err as (dyn StdError + 'static)).downcast_ref::<Error>();
-        //backtrace = backtrace.iter().filter().collect();
-
         Err(Self {
             msg: format!("{}", msg),
-            type_id,
-            type_name,
-            backtrace,
-            inner,
-            error,
+            type_id: TypeId::of::<E>(),
+            type_name: Error::name(&err),
+            backtrace: crate::backtrace::new(),
+            inner: Some(Box::new(err)),
         })
     }
 
@@ -100,8 +86,7 @@ impl Error {
             type_id: TypeId::of::<dyn StdError>(),
             type_name: String::from(STDERROR_TYPE),
             backtrace: crate::backtrace::new(),
-            inner: None,
-            error: Some(err),
+            inner: Some(err.into()),
         })
     }
 
@@ -125,75 +110,79 @@ impl Error {
         name
     }
 
-    /// Returns `true` if the wrapped error type is the same as `E`
+    /// In the case where this error is wrapping another this will return `true` else 
+    /// if this error is the only error `false`.
+    pub fn wrapper(&self) -> bool {
+        self.inner.is_some()
+    }
+
+    // Compare's the given concrete error type with this error's type which will be
+    // either an `Error` or an external concrete std::error::Error type depending
+    // on if an `Error` is being wrapped an if the wrapped error is external.
     pub fn is<E>(&self) -> bool
     where
-        E: StdError + Send + Sync + 'static,
+        E: StdError + Send + Sync + 'static
     {
         TypeId::of::<E>() == self.type_id
     }
 
-    /// Returns the inner error as Some error reference if it exists else None
-    pub fn downcast_ref(&self) -> Option<&Error>
-    {
-        match self.inner.as_ref() {
-            Some(inner) => inner.downcast_ref::<Error>(),
-            None => None,
-        }
-    }
-
+    // // Attempt to cast the internal error type to a concrete type
+    // pub fn downcast_ref<E>(&self) -> Option<&E>
+    // where
+    //     E: StdError + Send + Sync + 'static
+    // {
+    //     match self.is::<E>() {
+    //         true => self.downcast_ref::<E>(),
+    //         _ => None
+    //     }
+    // }
+    
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    fn write_err<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
+    fn write<'a, T>(&self, f: &mut Formatter<'_>, frames: T) -> fmt::Result
     where 
         T: Iterator<Item = &'a Frame>,
     {
         let c = Colorized::new();
-        let mut cause: Option<String> = None;
 
-        // Print inner error first
-        let mut source = (self as &dyn StdError).source();
-        if let Some(error) = self.downcast_ref() {
-            Display::fmt(error, f)?;
-        } else if let Some(error) = source {
-            let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&error));
-            source = error.source();
-            while let Some(error) = source {
-                if buf.chars().last().unwrap() != '\n' {
-                    buf += &"\n";
-                }
-
-                // Write out the next error cause
-                buf += &format!(" cause: {}", c.red(error));
-                source = error.source();
+        // Push all `Error` instances to a vec
+        let mut errors: Vec<&Error> = Vec::new();
+        let mut source = (self as &(dyn StdError + 'static)).source();
+        errors.push(self);
+        while let Some(stderr_ref) = source {
+            if let Some(err) = stderr_ref.downcast_ref::<Error>() {
+                errors.push(err);
+                source = stderr_ref.source();
+            } else {
+                break;
             }
-            if buf.chars().last().unwrap() != '\n' {
-                buf += &"\n";
-            }
-            cause = Some(buf);
         }
 
-        // Print outer error
-        writeln!(f, " error: {}", c.red(&self.msg))?;
-        if let Some(root_cause) = cause {
-            writeln!(f, "{}", root_cause)?;
+        // Pop them back off LIFO style
+        for err in errors.into_iter().rev() {
+            // Write out the error wrapper
+            writeln!(f, " error: {}", c.red(&err.msg))?;
+
+            // Write out any std errors in order
+            if let Some(stderr) = (err as &(dyn StdError + 'static)).source() {
+                err.write_std(f, &c, stderr)?;
+            }
+
+            // Write out the frames
+            err.write_frames(f, &c, err.backtrace.iter().filter(|x| !x.is_dependency()))?;
         }
-        self.write_frames(f, &c, frames)?;
         Ok(())
     }
 
-    // Write out the frames
     fn write_frames<'a, T>(&self, f: &mut Formatter<'_>, c: &Colorized, frames: T) -> fmt::Result
     where
         T: Iterator<Item = &'a Frame>,
     {
         for frame in frames {
-            // Add the symbol and file information
             writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
             write!(f, "    at: {}", frame.filename)?;
 
-            // Add the line and columen if they exist
             if let Some(line) = frame.lineno {
                 write!(f, ":{}", line)?;
                 if let Some(column) = frame.column {
@@ -204,15 +193,34 @@ impl Error {
         }
         Ok(())
     }
+
+    // Write out external errors
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, err: &dyn StdError) -> fmt::Result
+    {
+        let mut source = err.source();
+        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&err));
+        while let Some(inner) = source {
+            if buf.chars().last().unwrap() != '\n' {
+                buf += &"\n";
+            }
+            buf += &format!(" cause: {}", c.red(inner));
+            source = inner.source();
+        }
+        if buf.chars().last().unwrap() != '\n' {
+            buf += &"\n";
+        }
+        Ok(())
+    }
 }
 
 // External trait implementations
 // -------------------------------------------------------------------------------------------------
+
 impl StdError for Error
 {
     fn source(&self) -> Option<&(dyn StdError + 'static)>
     {
-        match &self.error {
+        match &self.inner {
             Some(x) => Some(&**x),
             None => None,
         }
@@ -222,23 +230,16 @@ impl StdError for Error
 /// Provides the same formatting for output as Display but includes the fullstack trace.
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write_err(f, self.backtrace.iter())
+        self.write(f, self.backtrace.iter())
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write_err(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
+        self.write(f, self.backtrace.iter().filter(|x| !x.is_dependency()))
     }
 }
-
-// /// Converts to Error from boxed std error
-// impl From<Box<dyn StdError + Send + Sync + 'static>> for Error {
-//     fn from(err: Box<dyn StdError + Send + Sync + 'static>) -> Self {
-//         Error::wrap(err, "").unwrap_err()
-//     }
-// }
 
 // Unit tests
 // -------------------------------------------------------------------------------------------------
