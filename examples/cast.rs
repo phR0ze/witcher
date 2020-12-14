@@ -3,11 +3,6 @@ trait Foo {
 }
 
 struct Bar(String);
-impl Bar {
-    fn bar(&self) -> &str {
-        &self.0
-    }
-}
 impl Foo for Bar {
     fn foo(&self) -> String {
         format!("foo: {}", &self.0)

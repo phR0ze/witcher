@@ -99,10 +99,6 @@ fn simple_path(filename: Option<&Path>) -> String {
     return w
 }
 
-fn filter_other() {
-
-}
-
 // Helper to suppress unwanted result checks
 // -------------------------------------------------------------------------------------------------
 trait Omit {
