@@ -117,11 +117,11 @@ impl Error
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    fn write(&self, f: &mut Formatter<'_>) -> fmt::Result
+    fn write(&self, f: &mut Formatter<'_>, fullstack: bool) -> fmt::Result
     {
         let c = Colorized::new();
 
-        // Push all `Error` instances to a vec
+        // Push all `Error` instances to a vec then reverse
         let mut errors: Vec<&Error> = Vec::new();
         let mut source = (self as &(dyn StdError + 'static)).source();
         errors.push(self);
@@ -133,23 +133,28 @@ impl Error
                 break;
             }
         }
+        errors = errors.into_iter().rev().collect();
 
         // Pop them back off LIFO style
-        let mut first = true;
-        for err in errors.into_iter().rev() {
+        let len = errors.len();
+        for (i, err) in errors.iter().enumerate() {
+            let mut parent: Option<&Error> = None;
+            if i + 1 < len {
+                parent = Some(errors[i+1]);
+            }
+
             // Write out the error wrapper
             writeln!(f, " error: {}", c.red(&err.msg))?;
 
             // Write out any std errors in order
-            if first {
-                first = false;
-                if let Some(stderr) = (err as &(dyn StdError + 'static)).source() {
+            if len == 0 {
+                if let Some(stderr) = (*err as &(dyn StdError + 'static)).source() {
                     err.write_std(f, &c, stderr)?;
                 }
             }
 
-            // Write out the frames
-            err.write_frames(f, &c, err.backtrace.iter().filter(|x| !x.is_dependency()))?;
+            // Write out the frames minus those in the wrapping error
+            err.write_frames(f, &c, err, parent, fullstack)?;
         }
         Ok(())
     }
@@ -172,10 +177,24 @@ impl Error
         write!(f, "{}", buf)
     }
 
-    fn write_frames<'a, T>(&self, f: &mut Formatter<'_>, c: &Colorized, frames: T) -> fmt::Result
-    where
-        T: Iterator<Item = &'a Frame>,
+    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, err: &Error, other: Option<&Error>, fullstack: bool) -> fmt::Result
     {
+        // Fullstack means don't filter anything
+        let frames: Vec<&Frame> = match fullstack {
+            false => {
+                let frames: Vec<&Frame> = err.backtrace.iter().filter(|x| !x.is_dependency()).collect();
+                match other {
+                    Some(parent) => {
+                        let len = frames.len();
+                        let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
+                        frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
+                    },
+                    _ => frames
+                }
+            },
+            _ => err.backtrace.iter().collect()
+        };
+
         for frame in frames {
             writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
             write!(f, "    at: {}", frame.filename)?;
@@ -209,14 +228,14 @@ impl StdError for Error
 /// Provides the same formatting for output as Display but includes the fullstack trace.
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write(f)
+        self.write(f, true)
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write(f)
+        self.write(f, false)
     }
 }
 
