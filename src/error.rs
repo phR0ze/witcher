@@ -110,12 +110,6 @@ impl Error
         name
     }
 
-    /// In the case where this error is wrapping another this will return `true` else 
-    /// if this error is the only error `false`.
-    pub fn wrapper(&self) -> bool {
-        self.inner.is_some()
-    }
-
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
