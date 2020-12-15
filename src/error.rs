@@ -23,7 +23,6 @@ static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 /// allowing you to focus on your code.
 /// 
 /// Saftey: data layout ensured to be consistent with repr(C) for raw conversions.
-#[repr(C)]
 pub struct Error
 {
     // Error message which will either be additional context for the inner error
@@ -247,6 +246,16 @@ mod tests {
     use super::*;
     use std::env;
 
+    // Disable backtrace and colors
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    pub fn initialize() {
+        INIT.call_once(|| {
+            env::set_var("COLOR", "0");
+            env::set_var("RUST_BACKTRACE", "0");
+        });
+    }
+
     struct TestError {
         msg: String,
         inner: Option<Box<TestError>>
@@ -273,7 +282,7 @@ mod tests {
     
     #[test]
     fn test_chained_cause() {
-        env::set_var("COLOR", "0");
+        initialize();
         let err = TestError {
             msg: "cause 1".to_string(),
             inner: Some(Box::new(TestError{
@@ -284,7 +293,9 @@ mod tests {
                 })),
             })),
         };
-        assert!(format!("{}", Error::wrap(err, "wrapped").unwrap_err()).starts_with(" error: wrapped\n cause: witcher::error::tests::TestError: cause 1\n cause: cause 2\n cause: cause 3\n"));
+        let mut err_str = format!("{}", Error::wrap(err, "wrapped").unwrap_err());
+        err_str = err_str.split("rs:").nth(0).unwrap().to_string();
+        assert_eq!(" error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3\n", err_str);
     }
 
 //     #[test]
