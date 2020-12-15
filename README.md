@@ -40,7 +40,7 @@ as a side note I moved all my research down the rabbit hole on low level TraitOb
 safe code.
 
 ## Backlog <a name="backlog"/></a>
-* Allow for optionally not printing out the backtrace
+* Allow for optionally not printing out the backtrace with `{:#?}`
 * Provide a mechanism for converting to JSON
 
 ### Table of Contents

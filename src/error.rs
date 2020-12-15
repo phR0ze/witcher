@@ -247,7 +247,7 @@ mod tests {
     static INIT: Once = Once::new();
     pub fn initialize() {
         INIT.call_once(|| {
-            env::set_var("COLOR", "0");
+            env::set_var(crate::WITCHER_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
         });
     }

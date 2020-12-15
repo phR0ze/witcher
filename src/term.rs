@@ -1,24 +1,23 @@
-use libc;
 use colored::*;
+use libc;
 use std::env;
 use std::fmt::Display;
 
 const NO_COLOR: &str = "0";
+pub const WITCHER_COLOR: &str = "WITCHER_COLOR";
 
-/// detect if we are using a tty
 pub fn isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
 }
 
-/// Provides colored with a tty aware wrapper and an option to disable
-/// colors.
 pub struct Colorized {
     colorized: bool,
 }
+
 impl Colorized {
     pub fn new() -> Self {
         let mut colorized = isatty();
-        if &*env::var("COLOR").unwrap_or("1".to_string()) == NO_COLOR {
+        if &*env::var(WITCHER_COLOR).unwrap_or("1".to_string()) == NO_COLOR {
             colorized = false;
         }
         Self { colorized }
@@ -26,7 +25,7 @@ impl Colorized {
 
     pub fn red<M>(&self, msg: M) -> ColoredString
     where
-        M: Display
+        M: Display,
     {
         match self.colorized {
             true => format!("{}", msg).bright_red(),
@@ -36,12 +35,11 @@ impl Colorized {
 
     pub fn cyan<M>(&self, msg: M) -> ColoredString
     where
-        M: Display
+        M: Display,
     {
         match self.colorized {
             true => format!("{}", msg).bright_cyan(),
             _ => format!("{}", msg).bright_cyan().clear(),
         }
     }
-
 }

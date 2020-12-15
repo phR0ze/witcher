@@ -2,8 +2,9 @@ mod backtrace;
 mod error;
 mod term;
 mod wrapper;
-
 use std::error::Error as StdError;
+
+pub use crate::term::WITCHER_COLOR;
 pub use crate::error::Error;
 pub use crate::wrapper::Wrapper;
 
@@ -17,6 +18,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// use witcher::prelude::*;
 /// ```
 pub mod prelude {
+    pub use super::WITCHER_COLOR;
     pub use super::Result;
     pub use super::Error;
     pub use super::Wrapper;
