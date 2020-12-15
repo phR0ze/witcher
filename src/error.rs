@@ -99,6 +99,10 @@ impl Error
             name = String::from(name.trim_start_matches('&'));
         }
 
+        if name.starts_with("dyn ") {
+            name = String::from(name.trim_start_matches("dyn "));
+        }
+
         // Strip off suffixes
         name = String::from(name.split("<").next().unwrap_or("<unknown>"));
 
@@ -131,19 +135,41 @@ impl Error
         }
 
         // Pop them back off LIFO style
+        let mut first = true;
         for err in errors.into_iter().rev() {
             // Write out the error wrapper
             writeln!(f, " error: {}", c.red(&err.msg))?;
 
             // Write out any std errors in order
-            if let Some(stderr) = (err as &(dyn StdError + 'static)).source() {
-                err.write_std(f, &c, stderr)?;
+            if first {
+                first = false;
+                if let Some(stderr) = (err as &(dyn StdError + 'static)).source() {
+                    err.write_std(f, &c, stderr)?;
+                }
             }
 
             // Write out the frames
             err.write_frames(f, &c, err.backtrace.iter().filter(|x| !x.is_dependency()))?;
         }
         Ok(())
+    }
+
+    // Write out external errors
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, err: &dyn StdError) -> fmt::Result
+    {
+        let mut buf = format!(" cause: {}", c.red(err));
+        let mut source = err.source();
+        while let Some(inner) = source {
+            if buf.chars().last().unwrap() != '\n' {
+                buf += &"\n";
+            }
+            buf += &format!(" cause: {}", c.red(inner));
+            source = inner.source();
+        }
+        if buf.chars().last().unwrap() != '\n' {
+            buf += &"\n";
+        }
+        write!(f, "{}", buf)
     }
 
     fn write_frames<'a, T>(&self, f: &mut Formatter<'_>, c: &Colorized, frames: T) -> fmt::Result
@@ -163,24 +189,6 @@ impl Error
             write!(f, "\n")?;
         }
         Ok(())
-    }
-
-    // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, err: &dyn StdError) -> fmt::Result
-    {
-        let mut source = err.source();
-        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(&err));
-        while let Some(inner) = source {
-            if buf.chars().last().unwrap() != '\n' {
-                buf += &"\n";
-            }
-            buf += &format!(" cause: {}", c.red(inner));
-            source = inner.source();
-        }
-        if buf.chars().last().unwrap() != '\n' {
-            buf += &"\n";
-        }
-        write!(f, "{}", buf)
     }
 }
 
