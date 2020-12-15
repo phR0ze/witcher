@@ -147,7 +147,7 @@ impl Error
             writeln!(f, " error: {}", c.red(&err.msg))?;
 
             // Write out any std errors in order
-            if len == 0 {
+            if i == 0 {
                 if let Some(stderr) = (*err as &(dyn StdError + 'static)).source() {
                     err.write_std(f, &c, stderr)?;
                 }
@@ -179,7 +179,6 @@ impl Error
 
     fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, err: &Error, other: Option<&Error>, fullstack: bool) -> fmt::Result
     {
-        // Fullstack means don't filter anything
         let frames: Vec<&Frame> = match fullstack {
             false => {
                 let frames: Vec<&Frame> = err.backtrace.iter().filter(|x| !x.is_dependency()).collect();
@@ -192,6 +191,8 @@ impl Error
                     _ => frames
                 }
             },
+
+            // Fullstack `true` means don't filter anything
             _ => err.backtrace.iter().collect()
         };
 
