@@ -2,22 +2,27 @@
 Track and put down bugs using simple concise error handling
 
 Rather than terminate execution randomly in your code base, with `panics` via `unwrap` and `expect`
-varients, or laboriously wrapping every every error type, or having to work with `Box` types and
-loose easy downcasting instead simply use `witcher::Result<T>` as the return type and the `?`
-operator to automatically propogate errors up the stack simply and easily while still retaining the
-`std::error::Error` downcasting ability and gaining additional contextual error messaging via `wrap`
-and `automatic simplified backtraces`.
+varients, or laboriously wrapping every single underlying error type, or having to work with `Box`
+types and loose easy downcasting; instead simply use `witcher::Result<T>` as the return type and the
+`?` operator to automatically propogate errors up the stack cleanly and easily while still retaining
+the `std::error::Error` downcasting ability and gaining additional contextual error messaging via
+`wrap` and the holy grail `automatic simplified backtraces`.
+
+<<< TBD Example here >>>
 
 ## What you get <a name="what-you-get"/></a>
-1. ***Error handling should be simple***  
+1. ***Error handling simplified***  
    > by providing pattern matching on errors  
    > by automatically handling conversions and wrapping  
    > by providing concise and terse user interaction  
-2. ***Error handling should tell the full story***  
+   > by providing conditional colored output
+2. ***Error handling that tells the full story***  
    > by never discarding errors  
    > by chaining errors together  
    > by providing contextual messaging
    > by providing tracing from point of origin  
+3. ***Safty***
+   > 100% safe code without any TraitObject low level manipulation
 
 ## Manifesto <a name="manifesto"/></a>
 Coming from a Golang background most recently I fully expected to just import the defacto standard
@@ -29,6 +34,14 @@ Golang's before the existance of `pkg/errors`. I found a few projects clearly mo
 and saw the tide turn on once popular packages. Literally weeks of research and testing of numerous
 different patterns and packages later though I have still yet to find anything as simple and usable
 as the venerable [pkg/errors](https://github.com/pkg/errors). Thus `witcher`.
+
+as a side note I moved all my research down the rabbit hole on low level TraitObject manipulation to
+[phR0ze/rust-examples](https://github.com/phR0ze/rust-examples) and am happy to say `witcher` is 100%
+safe code.
+
+## Backlog <a name="backlog"/></a>
+* Allow for optionally not printing out the backtrace
+* Provide a mechanism for converting to JSON
 
 ### Table of Contents
 * [Usage](#usage)
@@ -104,13 +117,15 @@ both created by the same author. I still find the options lacking.
 
 After reviewing dozens of implementations around errors it would seem that they generally fally into
 two or three categories:
-1. focus easily generating new error types via macros
-2. focus on the handling of errors in a consistent way
+1. focused on easily generating new error types via macros
+2. focused on the handling of errors in a consistent way
 3. some combination of the two
 
 References:
 * [Review of AnyHow](https://nick.groenen.me/posts/rust-error-handling)
 * [Survey of error handling in Rust](https://blog.yoshuawuyts.com/error-handling-survey)
+* [std::io::Error](https://matklad.github.io/2020/10/15/study-of-std-io-error.html)
+* [Rust Error Tutorial](https://benkay86.github.io/rust-error-tutorial.html)
 
 ## Error Handling <a name="error-handling"/></a>
 I'm grouping packages here that tend to focus on error handling or a more holistic approach rather
@@ -162,7 +177,7 @@ References:
 ### anyhow <a name="anyhow"/></a>
 [anyhow](https://github.com/dtolnay/anyhow) does a good job providing convenience and chaining of
 errors. You can combine anyhow and tracing together to make a decent solution. I like that it is
-built on top of the `std::error::Error` trait.
+built on top of the `std::error::Error` trait which inspired some of the work I did as well.
 
 Running the code in this section will give you a nicely formatted output:
 ```bash
@@ -179,10 +194,15 @@ errors to a common type which is two of the three areas for my minimal requireme
 understand how it surfaces the backtrace details.
 
 Fails to meet requirements:
-* simplified error tracing you'd find in something like the Golang errors package is missing
+* backtracing although present is difficult to use:
+  * based on using rust nightly which is a no go for stable code
+  * dumps out the whole unwound stack which includes so much detail from unrelated core and standard
+  libs that it's incredibly messy and you have to cross your eyes to see the important data
 * the underlying error types are not printed out
 * no good way to integrate the detailed error output with tracing json messaging formats
+* makes extensive use of `unsafe` code that does extremely complex error prone low level manipulation
 
+Example usage:
 ```rust
 use anyhow::Context;
 use std::{error::Error, fmt};
@@ -228,7 +248,11 @@ fn main() {
 instrument errors with additional tracing information and is part of the venerable `tracing`
 ecosystem from the `tokio` project. This is one of the few projects that provides tracing information
 in their error infrastructure and is really close to what I was looking for. The implementation
-actually uses `thiserror`
+actually uses `thiserror` to generate custom errors and `tracing` for simplified backtracing.
+
+Because its only capturing the instrumented functions you only see a partial backtracing view which
+allows you to focus on the actual issue rather than staring at rust internal unwinding in the
+standard and core libs etc...
 
 Backtracing example:
 1. Clone the repo
@@ -252,15 +276,14 @@ Backtrace:
 Fails to meet requirements:
 * too much configuration overhead
   * each function that participates in the error tracing needs to have tracing annotations
-  * instrumenting the error uses an extremely verbose function name `.in_current_span()?`
+  * instrumenting the error uses an extremely verbose conversion function name `.in_current_span()?`
 * tracing information calls out the attribute location in the code not the actual code lines
   * the project is still unreleased and in beta so hopefully that improves
-
 
 ## Error Generation <a name="error-generation"/></a>
 I'm grouping packages here that tend to focus on error generation.
 
-### quick-errro <a name="quick-error"/></a>
+### quick-error <a name="quick-error"/></a>
 [quick-error](https://github.com/tailhook/quick-error) is another macro based helper for quickly
 generation new error types.
 

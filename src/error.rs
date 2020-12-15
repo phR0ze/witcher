@@ -1,12 +1,11 @@
 use crate::backtrace::Frame;
 use crate::{Result, StdError};
 use crate::term::Colorized;
-use std::any::TypeId;
 use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
 
 static ERROR_TYPE: &str = "witcher::Error";
-static STDERROR_TYPE: &str = "StdError";
+static STDERROR_TYPE: &str = "std::error::Error";
 static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 
 /// `Error` is a wrapper providing additional context and chaining of errors.
@@ -30,11 +29,11 @@ pub struct Error
     // error message.
     msg: String,
 
-    // Type id and type name here will refer to the inner error in the case where
+    // Type name here will refer to the inner error in the case where
     // inner error is Some and is an external type else it will be `Error`. 
-    type_id: TypeId,
     type_name: String,
 
+    // Backtrace frames that have been cleaned up
     backtrace: Vec<Frame>,
 
     // The original error in the case where we're wrapping an external error or
@@ -51,7 +50,6 @@ impl Error
     {
         Err(Self {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<Error>(),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
@@ -67,7 +65,6 @@ impl Error
     {
         Err(Self {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<E>(),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
@@ -82,7 +79,6 @@ impl Error
     {
         Err(Self {
             msg: format!("{}", msg),
-            type_id: TypeId::of::<dyn StdError>(),
             type_name: String::from(STDERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: Some(err.into()),
@@ -143,7 +139,7 @@ impl Error
             }
 
             // Write out the error wrapper
-            writeln!(f, " error: {}", c.red(&err.msg))?;
+            writeln!(f, " error: {}: {}", c.red(ERROR_TYPE), c.red(&err.msg))?;
 
             // Write out any std errors in order
             if i == 0 {
@@ -153,21 +149,21 @@ impl Error
             }
 
             // Write out the frames minus those in the wrapping error
-            err.write_frames(f, &c, err, parent, fullstack)?;
+            err.write_frames(f, &c, parent, fullstack)?;
         }
         Ok(())
     }
 
     // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, err: &dyn StdError) -> fmt::Result
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError) -> fmt::Result
     {
-        let mut buf = format!(" cause: {}", c.red(err));
-        let mut source = err.source();
+        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
+        let mut source = stderr.source();
         while let Some(inner) = source {
             if buf.chars().last().unwrap() != '\n' {
                 buf += &"\n";
             }
-            buf += &format!(" cause: {}", c.red(inner));
+            buf += &format!(" cause: {}: {}", c.red(STDERROR_TYPE), c.red(inner));
             source = inner.source();
         }
         if buf.chars().last().unwrap() != '\n' {
@@ -176,12 +172,12 @@ impl Error
         write!(f, "{}", buf)
     }
 
-    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, err: &Error, other: Option<&Error>, fullstack: bool) -> fmt::Result
+    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, fullstack: bool) -> fmt::Result
     {
         let frames: Vec<&Frame> = match fullstack {
             false => {
-                let frames: Vec<&Frame> = err.backtrace.iter().filter(|x| !x.is_dependency()).collect();
-                match other {
+                let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
+                match parent{
                     Some(parent) => {
                         let len = frames.len();
                         let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
@@ -192,7 +188,7 @@ impl Error
             },
 
             // Fullstack `true` means don't filter anything
-            _ => err.backtrace.iter().collect()
+            _ => self.backtrace.iter().collect()
         };
 
         for frame in frames {
