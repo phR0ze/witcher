@@ -1,6 +1,7 @@
 use crate::backtrace::Frame;
 use crate::{Result, StdError};
-use crate::term::Colorized;
+use crate::term::{self, Colorized};
+use crate::WITCHER_FULLSTACK;
 use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -112,9 +113,11 @@ impl Error
     // Common implementation for displaying error.
     // A lifetime needs called out here for the frames and the frame references
     // to reassure Rust that they will exist long enough to get the data needed.
-    fn write(&self, f: &mut Formatter<'_>, fullstack: bool) -> fmt::Result
+    fn write(&self, f: &mut Formatter<'_>, debug: bool) -> fmt::Result
     {
+        // Setup controls for writing out errors
         let c = Colorized::new();
+        let fullstack = term::var_enabled(WITCHER_FULLSTACK);
 
         // Push all `Error` instances to a vec then reverse
         let mut errors: Vec<&Error> = Vec::new();
@@ -144,18 +147,18 @@ impl Error
             // Write out any std errors in order
             if i == 0 {
                 if let Some(stderr) = (*err as &(dyn StdError + 'static)).source() {
-                    err.write_std(f, &c, stderr)?;
+                    err.write_std(f, &c, stderr, debug)?;
                 }
             }
 
             // Write out the frames minus those in the wrapping error
-            err.write_frames(f, &c, parent, fullstack)?;
+            err.write_frames(f, &c, parent, debug, fullstack)?;
         }
         Ok(())
     }
 
     // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError) -> fmt::Result
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError, debug: bool) -> fmt::Result
     {
         let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
         let mut source = stderr.source();
@@ -172,9 +175,9 @@ impl Error
         write!(f, "{}", buf)
     }
 
-    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, fullstack: bool) -> fmt::Result
+    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, debug: bool, fullstack: bool) -> fmt::Result
     {
-        let frames: Vec<&Frame> = match fullstack {
+        let frames: Vec<&Frame> = match debug {
             false => {
                 let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
                 match parent{

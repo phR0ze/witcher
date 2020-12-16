@@ -4,7 +4,12 @@ mod term;
 mod wrapper;
 use std::error::Error as StdError;
 
-pub use crate::term::WITCHER_COLOR;
+/// Environment variable name for enabling/disabling color
+pub const WITCHER_COLOR: &str = "WITCHER_COLOR";
+
+/// Environment variable name for enabling/disabling fullstack tracing
+pub const WITCHER_FULLSTACK: &str = "WITCHER_FULLSTACK";
+
 pub use crate::error::Error;
 pub use crate::wrapper::Wrapper;
 
@@ -19,6 +24,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// ```
 pub mod prelude {
     pub use super::WITCHER_COLOR;
+    pub use super::WITCHER_FULLSTACK;
     pub use super::Result;
     pub use super::Error;
     pub use super::Wrapper;
