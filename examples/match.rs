@@ -9,6 +9,9 @@ fn do_something() -> Result<()> {
 // Retry on an `err_is` check
 fn do_another_thing() -> Result<()> {
     let mut retries = 0;
+    // let mut result = do_external_thing().retry(3, |x| {
+
+    // });
     let mut result = do_external_thing();
     while retries < 3 && result.err_is::<std::io::Error>() {
         retries += 1;
