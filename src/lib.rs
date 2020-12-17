@@ -29,6 +29,7 @@ pub mod prelude {
     pub use super::Result;
     pub use super::Error;
     pub use super::Wrapper;
+    pub use std::any::TypeId;
 }
 
 /// Match on error types.

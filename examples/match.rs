@@ -6,19 +6,12 @@ fn do_something() -> Result<()> {
     do_another_thing().wrap("Failed to slay beast")
 }
 
-// Retry on an `err_is` check
+// Retry on a concrete error type using `retry_on`
 fn do_another_thing() -> Result<()> {
-    let mut retries = 0;
-    // let mut result = do_external_thing().retry(3, |x| {
-
-    // });
-    let mut result = do_external_thing();
-    while retries < 3 && result.err_is::<std::io::Error>() {
-        retries += 1;
-        println!("std::io::Error: retrying! #{}", retries);
-        result = do_external_thing();
-    }
-    result.wrap("Failed while attacking beast")
+    do_external_thing().retry_on(3, TypeId::of::<std::io::Error>(), |i| {
+        println!("std::io::Error: retrying! #{}", i);
+        do_external_thing()
+    }).wrap("Failed while attacking beast")
 }
 
 // Function that returns an external error type outside our codebase
@@ -29,7 +22,7 @@ fn do_external_thing() -> std::io::Result<()> {
 fn main() {
     let err = do_something().unwrap_err();
 
-    // Get the last erro in the error chain which will be the root cause
+    // Get the last error in the error chain which will be the root cause
     let root_cause = err.last();
 
     // Match multiple cases to handle error differently based on first error
