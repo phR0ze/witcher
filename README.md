@@ -31,6 +31,9 @@ simplified backtraces`.
 
 ### Quick links
 * [Usage](#usage)
+  * [Downcasting](#downcasting)
+    * [downcast\_ref](#downcast_ref)
+    * [match\_err](#match_err)
   * [Retries](#retries)
     * [err\_is](#err_is)
     * [retry\_on](#retry_on)
@@ -57,37 +60,71 @@ Return `Result<T>` from witcher and use `wrap` to automatically chain errors and
 contextual messaging at the same time. `wrap` returns a `Result<T>` so there are fewer symbols and
 less typing needed.
 
-***Requires Rust >= 1.30*** see https://doc.rust-lang.org/std/error/trait.Error.html#method.source
+1. Ensure your running a modern enough Rust  
+   ***Requires Rust >= 1.30*** as witcher depends on [`source`](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
+2. Import witcher in your `Cargo.toml`
+   ```toml
+   [dependencies]
+   witcher = "0.1"
+   ```
+3. Use the witcher prelude
+   ```rust
+   use witcher::prelude::*;
+   ```
 
-Example code:
-```toml
-[dependencies]
-witcher = "0.1"
-```
+## Downcasting <a name="downcasting"/></a>
+We can match on error types using downcasting or with the `match_err!` macro.
 
+#### `downcast_ref` - *access std::error::Error's downcast_ref* <a name="downcast_ref"/></a>
 ```rust
-// Import the essentials of error handling with a single line
 use witcher::prelude::*;
 
 // Wrap our internal error with additional context as we move up the stack
 fn do_something() -> Result<()> {
-    do_another_thing().wrap("Failed to slay beast")
-
-    // try again based on error matching?
-}
-
-// Wrap the external error with additional context
-fn do_another_thing() -> Result<()> {
-    do_external_thing().wrap("Failed during sword swing")
+    do_external_thing().wrap("Failed to slay beast")
 }
 
 // Function that returns an external error type outside our codebase
 fn do_external_thing() -> std::io::Result<()> {
-    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
 }
 
 fn main() {
-    println!("{}", do_something().unwrap_err());
+    let err = do_something().unwrap_err();
+
+    // Get the last error in the error chain which will be the root cause
+    let root_cause = err.last();
+
+    // Match single concrete error type
+    if let Some(e) = root_cause.downcast_ref::<std::io::Error>() {
+        println!("Root cause is a std::io::Error: {}", e)
+    } else {
+        println!("{}", err)
+    }
+}
+```
+
+#### `match_err!` - *matches on concrete error typese* <a name="err_is"/></a>
+```rust
+use witcher::prelude::*;
+
+fn do_something() -> Result<()> {
+    do_external_thing().wrap("Failed to slay beast")
+}
+
+fn do_external_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
+}
+
+fn main() {
+    let err = do_something().unwrap_err();
+
+    // Match multiple downcasted cases to handle errors differently
+    match_err!(err.last(), {
+        x: Error => println!("Root cause is witcher::Error: {}", x),
+        x: std::io::Error => println!("Root cause is std::io::Error: {}", x),
+        _ => println!("{}", err)
+    });
 }
 ```
 
@@ -168,7 +205,7 @@ any additional terms or conditions.
 ---
 
 ## Backlog <a name="backlog"/></a>
+* Add rust doc comments
 * Mechanism for converting to JSON
 * More output options based on `{}, {:#}, {:?}, {:#?}`
 * `bail!` macro for immediate returns combining `Error::new` and `Error::wrap`
-* `root` function to surface the root of the chain easily for type matching   

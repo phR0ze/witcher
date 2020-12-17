@@ -1,6 +1,6 @@
 [package]
 name = "witcher"
-version = "0.0.38"
+version = "0.0.39"
 edition = "2018"
 authors = ["phR0ze"]
 license = "MIT OR Apache-2.0"
@@ -22,3 +22,5 @@ debug = true    # keep symbols in release for debug
 colored = "2"
 backtrace = "0.3"
 libc = { version = "0.2", default-features = false }
+
+[dev-dependencies]
