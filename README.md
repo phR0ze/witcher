@@ -31,6 +31,9 @@ simplified backtraces`.
 
 ### Quick links
 * [Usage](#usage)
+  * [Retries](#retries)
+    * [err\_is](#err_is)
+    * [retry\_on](#retry_on)
 * [License](#license)
 * [Backlog](#backlog)
 
@@ -49,7 +52,7 @@ As a side note I moved all my research on low level TraitObject manipulation, wh
 the rabbit hole, over to [phR0ze/rust-examples](https://github.com/phR0ze/rust-examples) and am happy
 to say `witcher` is 100% safe code.
 
-## Usage <a name="usage"/></a>
+# Usage <a name="usage"/></a>
 Return `Result<T>` from witcher and use `wrap` to automatically chain errors and add additional
 contextual messaging at the same time. `wrap` returns a `Result<T>` so there are fewer symbols and
 less typing needed.
@@ -85,6 +88,70 @@ fn do_external_thing() -> std::io::Result<()> {
 
 fn main() {
     println!("{}", do_something().unwrap_err());
+}
+```
+
+## Retries <a name="retries"/></a>
+We can retry failing code with a few different `Result` extension functions.
+
+#### `err_is` - *will return true if an error exists and is the given type* <a name="err_is"/></a>
+```rust
+use witcher::prelude::*;
+
+fn retry_on_concreate_error_type_using_err_is() -> Result<()> {
+    let mut retries = 0;
+    let mut result = do_external_thing();
+    while retries < 3 && result.err_is::<std::io::Error>() {
+        retries += 1;
+        println!("retrying using err_is #{}", retries);
+        result = do_external_thing();
+    }
+    result.wrap("Failed while attacking beast")
+}
+fn do_external_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+}
+
+fn main() {
+    println!("{}", retry_on_concreate_error_type_using_err_is().unwrap_err());
+}
+```
+
+#### `retry_on` - *is a cleaner simplified way to do a similar thing as our err_is example* <a name="retry_on"/></a>
+```rust
+use witcher::prelude::*;
+
+fn retry_on_concreate_error_type() -> Result<()> {
+    do_external_thing().retry_on(3, TypeId::of::<std::io::Error>(), |i| {
+        println!("std::io::Error: retrying! #{}", i);
+        do_external_thing()
+    }).wrap("Failed while attacking beast")
+}
+fn do_external_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+}
+
+fn main() {
+    println!("{}", retry_on_concreate_error_type().unwrap_err());
+}
+```
+
+#### `retry` - *is similar to `retry_on` but doesn't take the type of error into account* <a name="retry"/></a>
+```rust
+use witcher::prelude::*;
+
+fn retry() -> Result<()> {
+    do_external_thing().retry(3, |i| {
+        println!("std::io::Error: retrying! #{}", i);
+        do_external_thing()
+    }).wrap("Failed while attacking beast")
+}
+fn do_external_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+}
+
+fn main() {
+    println!("{}", retry().unwrap_err());
 }
 ```
 

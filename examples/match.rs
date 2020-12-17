@@ -3,11 +3,21 @@ use witcher::prelude::*;
 
 // Wrap our internal error with additional context as we move up the stack
 fn do_something() -> Result<()> {
-    do_another_thing().wrap("Failed to slay beast")
+    retry_on_concreate_error_type().wrap("Failed to slay beast")
 }
 
-// Retry on a concrete error type using `retry_on`
-fn do_another_thing() -> Result<()> {
+fn retry_on_concreate_error_type() -> Result<()> {
+
+    // Retry on concrete error using `err_is`
+    let mut retries = 0;
+    let mut result = do_external_thing();
+    while retries < 3 && result.err_is::<std::io::Error>() {
+        retries += 1;
+        println!("std::io::Error: retrying using err_is #{}", retries);
+        result = do_external_thing();
+    }
+    result.wrap("Failed while attacking beast")
+
     do_external_thing().retry_on(3, TypeId::of::<std::io::Error>(), |i| {
         println!("std::io::Error: retrying! #{}", i);
         do_external_thing()
