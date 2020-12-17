@@ -1,56 +1,50 @@
 use witcher::prelude::*;
-use std::fmt::{self, Formatter, Display, Debug};
-use std::error::Error as StdError;
-
-struct TestError {
-    msg: String,
-    inner: Option<Box<TestError>>
+#[derive(Debug)]
+struct SuperError {
+    side: SuperErrorSideKick,
 }
-impl Debug for TestError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
+impl std::fmt::Display for SuperError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SuperError is here!")
     }
 }
-impl Display for TestError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-impl StdError for TestError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)>
-    {
-        match &self.inner {
-            Some(x) => Some(x as &dyn StdError),
-            None => None,
-        }
+impl std::error::Error for SuperError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.side)
     }
 }
 
-// Add additional context
+#[derive(Debug)]
+struct SuperErrorSideKick;
+impl std::fmt::Display for SuperErrorSideKick {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SuperErrorSideKick is here!")
+    }
+}
+impl std::error::Error for SuperErrorSideKick {}
+
 fn do_something() -> Result<()> {
-    do_another_thing().wrap("3rd wrap")
+    do_external_thing().wrap("Failed doing super hero work")
 }
 
-// Wrap a custom internal error from the get go
-fn do_another_thing() -> Result<()> {
-    do_external_thing().wrap("2nd wrap")
-}
-
-// Chain the external error using std::error::Error features
-fn do_external_thing() -> Result<()> {
-    let err = TestError {
-        msg: "cause 1".to_string(),
-        inner: Some(Box::new(TestError{
-            msg: "cause 2".to_string(),
-            inner: Some(Box::new(TestError{
-                msg: "cause 3".to_string(),
-                inner: None
-            })),
-        })),
-    };
-    Error::wrap(err, "1st wrap")
+fn do_external_thing() -> std::result::Result<(), SuperError> {
+    Err(SuperError {side: SuperErrorSideKick})
 }
 
 fn main() {
-    println!("{}", do_something().unwrap_err());
+    if let Err(err) = do_something() {
+
+        // Traverse the error chain
+        let mut source = Some(err.std());
+        while let Some(err) = source {
+            match_err!(err, {
+                // Using alternate form of display for `Error` to get just the message
+                x: Error => println!("Found witcher::Error: {:#}", x),
+                x: SuperError => println!("Found SuperError: {}", x),
+                x: SuperErrorSideKick => println!("Found SuperErrorSideKick: {}", x),
+                _ => println!("unknown")
+            });
+            source = err.source();
+        }
+    }
 }

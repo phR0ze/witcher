@@ -8,7 +8,7 @@ contextual messaging automatically propogated up the stack. witcher implements `
 retaining downcasting and chaining. Best of all witcher provides the holy grail: `automatic
 simplified backtraces`.
 
-![Standard Output](docs/images/standard-output.png)
+![Display debug](docs/images/display-debug.png)
 
 ## What you get <a name="what-you-get"/></a>
 1. ***Error handling simplified***  
@@ -24,8 +24,7 @@ simplified backtraces`.
 3. ***Safety***
    > 100% safe code without any use of `unsafe`  
    > Zero low level TraitObject manipulation  
-   > Simple code base with only a couple 100 lines  
-   > Well tested with over 90% code coverage  
+   > Well tested with over 90% code coverage - planned  
 
 ---
 
@@ -34,9 +33,16 @@ simplified backtraces`.
   * [Downcasting](#downcasting)
     * [downcast\_ref](#downcast_ref)
     * [match\_err](#match_err)
+  * [Chaining](#chaining)
+    * [source](#source)
   * [Retries](#retries)
     * [err\_is](#err_is)
     * [retry\_on](#retry_on)
+  * [Display](#display)
+    * [Normal](#display-normal)
+    * [Alternate](#display-alternate)
+    * [Debug](#display-debug)
+    * [Alternate Debug](#display-alternate-debug)
 * [License](#license)
 * [Backlog](#backlog)
 
@@ -128,6 +134,65 @@ fn main() {
 }
 ```
 
+## Chaining <a name="retries"/></a>
+We can continue to leverage std::error::Error's `source` method for chaining of errors. The first
+error wrapped will retain its concrete type but errors there after in the chain have lost that
+information.
+
+#### `source` - *std::error::Error's source method is exposed* <a name="source"/></a>
+```rust
+use witcher::prelude::*;
+#[derive(Debug)]
+struct SuperError {
+    side: SuperErrorSideKick,
+}
+impl std::fmt::Display for SuperError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SuperError is here!")
+    }
+}
+impl std::error::Error for SuperError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.side)
+    }
+}
+
+#[derive(Debug)]
+struct SuperErrorSideKick;
+impl std::fmt::Display for SuperErrorSideKick {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SuperErrorSideKick is here!")
+    }
+}
+impl std::error::Error for SuperErrorSideKick {}
+
+fn do_something() -> Result<()> {
+    do_external_thing().wrap("Failed doing super hero work")
+}
+
+fn do_external_thing() -> std::result::Result<(), SuperError> {
+    Err(SuperError {side: SuperErrorSideKick})
+}
+
+fn main() {
+    if let Err(err) = do_something() {
+
+        // Traverse the error chain
+        let mut source = Some(err.std());
+        while let Some(err) = source {
+            match_err!(err, {
+                // Using alternate form of display for `Error` to get just the message
+                x: Error => println!("Found witcher::Error: {:#}", x),
+                x: SuperError => println!("Found SuperError: {}", x),
+                x: SuperErrorSideKick => println!("Found SuperErrorSideKick: {}", x),
+                _ => println!("unknown")
+            });
+            source = err.source();
+        }
+    }
+}
+```
+
 ## Retries <a name="retries"/></a>
 We can retry failing code with a few different `Result` extension functions.
 
@@ -192,6 +257,22 @@ fn main() {
 }
 ```
 
+## Display <a name="display"/></a>
+Witcher's `Error` type implements different functionality for each of the `Display` format options.
+They follow a level of verbosity in witcher from least information to most i.e. ***`{}  {:#}  {:?}  {:#?}`***
+
+#### `Normal: {}` - *will write out the first error message only* <a name="display-normal"/></a>
+![Display normal](docs/images/display-normal.png)
+
+#### `Alternate: {:#}` - *will write out all error messages in the chain* <a name="display-alternate"/></a>
+![Display alternate](docs/images/display-alternate.png)
+
+#### `Debug: {:?}` - *will write out all error messaging with simplified backtracing* <a name="display-debug"/></a>
+![Display debug](docs/images/display-debug.png)
+
+#### `Alternate Debug: {:#?}` - *will write out all error messaging with simplified backtracing* <a name="display-alternate-debug"/></a>
+![Display alternate debug](docs/images/display-alternate-debug.png)
+
 ## License <a name="license"/></a>
 This project is licensed under either of:
  * MIT license [LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT
@@ -206,6 +287,6 @@ any additional terms or conditions.
 
 ## Backlog <a name="backlog"/></a>
 * Add rust doc comments
+* Unit tests with 90% code coverage
 * Mechanism for converting to JSON
-* More output options based on `{}, {:#}, {:?}, {:#?}`
 * `bail!` macro for immediate returns combining `Error::new` and `Error::wrap`

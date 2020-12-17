@@ -127,6 +127,37 @@ impl Error
         err
     }
 
+
+    /// Implemented directly on the `Error` type to reduce casting required
+    pub fn is<T: StdError + 'static>(&self) -> bool
+    {
+        <dyn StdError + 'static>::is::<T>(self)
+    }
+
+    /// Implemented directly on the `Error` type to reduce casting required
+    pub fn downcast_ref<T: StdError + 'static>(&self) -> Option<&T>
+    {
+        <dyn StdError + 'static>::downcast_ref::<T>(self)
+    }
+
+    /// Implemented directly on the `Error` type to reduce casting required
+    pub fn downcast_mut<T: StdError + 'static>(&mut self) -> Option<&mut T>
+    {
+        <dyn StdError + 'static>::downcast_mut::<T>(self)
+    }
+
+    /// Cast the `Error` type to its parent trait `&dyn std::error::Error + 'static`
+    pub fn std(&self) -> &(dyn StdError + 'static)
+    {
+        self
+    }
+
+    /// Implemented directly on the `Error` type to reduce casting required
+    pub fn source(&self) -> Option<&(dyn StdError + 'static)>
+    {
+        self.std().source()
+    }
+
     /// Extract the name of the given error type and perform some clean up on the type
     fn name<T>(_: T) -> String {
         let mut name = format!("{}", std::any::type_name::<T>());
@@ -151,11 +182,79 @@ impl Error
         name
     }
 
-    // Common implementation for displaying error.
-    // A lifetime needs called out here for the frames and the frame references
-    // to reassure Rust that they will exist long enough to get the data needed.
-    fn write(&self, f: &mut Formatter<'_>, debug: bool) -> fmt::Result
+    // Write out external errors
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError) -> fmt::Result
     {
+        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
+        let mut source = stderr.source();
+        while let Some(inner) = source {
+            if buf.chars().last().unwrap() != '\n' {
+                buf += &"\n";
+            }
+            buf += &format!(" cause: {}: {}", c.red(STDERROR_TYPE), c.red(inner));
+            source = inner.source();
+        }
+        if buf.chars().last().unwrap() != '\n' {
+            buf += &"\n";
+        }
+        write!(f, "{}", buf)
+    }
+
+    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, fullstack: bool) -> fmt::Result
+    {
+        let frames: Vec<&Frame> = match fullstack {
+            false => {
+                let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
+                match parent{
+                    Some(parent) => {
+                        let len = frames.len();
+                        let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
+                        frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
+                    },
+                    _ => frames
+                }
+            },
+
+            // Fullstack `true` means don't filter anything
+            _ => self.backtrace.iter().collect()
+        };
+
+        let len = frames.len();
+        for (i, frame) in frames.iter().enumerate() {
+            writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
+            write!(f, "    at: {}", frame.filename)?;
+
+            if let Some(line) = frame.lineno {
+                write!(f, ":{}", line)?;
+                if let Some(column) = frame.column {
+                    write!(f, ":{}", column)?;
+                }
+            }
+            if i + 1 < len {
+                write!(f, "\n")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+// External trait implementations
+// -------------------------------------------------------------------------------------------------
+
+impl StdError for Error
+{
+    fn source(&self) -> Option<&(dyn StdError + 'static)>
+    {
+        match &self.inner {
+            Some(x) => Some(&**x),
+            None => None,
+        }
+    }
+}
+
+/// Provides the same formatting for output as Display but includes the fullstack trace.
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         // Setup controls for writing out errors
         let c = Colorized::new();
         let fullstack = term::var_enabled(WITCHER_FULLSTACK);
@@ -188,94 +287,46 @@ impl Error
             // Write out any std errors in order
             if i == 0 {
                 if let Some(stderr) = (*err).source() {
-                    err.write_std(f, &c, stderr, debug)?;
+                    err.write_std(f, &c, stderr)?;
                 }
             }
 
             // Write out the frames minus those in the wrapping error
-            err.write_frames(f, &c, parent, debug, fullstack)?;
+            err.write_frames(f, &c, parent, fullstack)?;
+            if i + 1 < len {
+                write!(f, "\n")?;
+            }
         }
         Ok(())
-    }
-
-    // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError, _debug: bool) -> fmt::Result
-    {
-        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
-        let mut source = stderr.source();
-        while let Some(inner) = source {
-            if buf.chars().last().unwrap() != '\n' {
-                buf += &"\n";
-            }
-            buf += &format!(" cause: {}: {}", c.red(STDERROR_TYPE), c.red(inner));
-            source = inner.source();
-        }
-        if buf.chars().last().unwrap() != '\n' {
-            buf += &"\n";
-        }
-        write!(f, "{}", buf)
-    }
-
-    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, debug: bool, _fullstack: bool) -> fmt::Result
-    {
-        let frames: Vec<&Frame> = match debug {
-            false => {
-                let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
-                match parent{
-                    Some(parent) => {
-                        let len = frames.len();
-                        let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
-                        frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
-                    },
-                    _ => frames
-                }
-            },
-
-            // Fullstack `true` means don't filter anything
-            _ => self.backtrace.iter().collect()
-        };
-
-        for frame in frames {
-            writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
-            write!(f, "    at: {}", frame.filename)?;
-
-            if let Some(line) = frame.lineno {
-                write!(f, ":{}", line)?;
-                if let Some(column) = frame.column {
-                    write!(f, ":{}", column)?;
-                }
-            }
-            write!(f, "\n")?;
-        }
-        Ok(())
-    }
-}
-
-// External trait implementations
-// -------------------------------------------------------------------------------------------------
-
-impl StdError for Error
-{
-    fn source(&self) -> Option<&(dyn StdError + 'static)>
-    {
-        match &self.inner {
-            Some(x) => Some(&**x),
-            None => None,
-        }
-    }
-}
-
-/// Provides the same formatting for output as Display but includes the fullstack trace.
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write(f, true)
     }
 }
 
 /// Provides formatting for output with frames filtered to just target code
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        self.write(f, false)
+        if !f.alternate() {
+            return write!(f, "{}", self.msg);
+        }
+
+        // Write out more detail
+        let c = Colorized::new();
+        let mut buf = String::new();
+        buf += &format!(" error: {}", c.red(&self.msg));
+
+        // Traverse the whole chain
+        let mut source = self.source();
+        while let Some(stderr) = source {
+            if buf.chars().last().unwrap() != '\n' {
+                buf += &"\n";
+            }
+            buf += &format!(" cause: ");
+            match stderr.downcast_ref::<Error>() {
+                Some(err) => buf += &format!("{}", c.red(&err.msg)),
+                _ => buf += &format!("{}", c.red(stderr))
+            }
+            source = stderr.source();
+        }
+        write!(f, "{}", buf)
     }
 }
 
