@@ -1,5 +1,5 @@
 use crate::{Error, Result, StdError};
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 /// Define the `wrap` function for Result types
 pub trait Wrapper<T> {
@@ -8,11 +8,15 @@ pub trait Wrapper<T> {
     fn wrap<M>(self, msg: M) -> Result<T>
     where
         M: Display + Send + Sync + 'static;
+
+    /// Check if the error is the given error type
+    fn err_is<U: StdError + 'static>(&self) -> bool;
 }
 
 // Handle wrapping a StdError
-impl<T, E> Wrapper<T> for Result<T, E>
+impl<T, E> Wrapper<T> for std::result::Result<T, E>
 where 
+    T: Debug + Send + Sync + 'static,
     E: StdError + Send + Sync + 'static,
 {
     fn wrap<M>(self, msg: M) -> Result<T>
@@ -22,6 +26,14 @@ where
         self.map_err(|err| {
             Error::wrap(err, msg).unwrap_err()
         })
+    }
+
+    fn err_is<U: StdError + 'static>(&self) -> bool
+    {
+        match self {
+            Ok(_) => false,
+            Err(e) => (e as &(dyn StdError + 'static)).is::<U>(),
+        }
     }
 }
 

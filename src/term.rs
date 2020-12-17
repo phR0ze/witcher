@@ -20,14 +20,25 @@ pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
     }
 }
 
+/// Check if the given environment variable is enabled or disabled.
+/// Not set, false not case sensitve and 0 will be reported as disabled
+/// all other values will be reported as true.
+/// Supports setting the given default if not set.
+pub fn var_enabled_d<K: AsRef<OsStr>>(key: K, default: &str) -> bool {
+    match env::var(key).unwrap_or(default.to_string()).to_lowercase().as_str() {
+        "false" | "0" => false,
+        _ => true
+    }
+}
+
 pub struct Colorized {
     colorized: bool,
 }
 
 impl Colorized {
     pub fn new() -> Self {
-        let mut colorized = isatty();
-        if !var_enabled(WITCHER_COLOR) {
+        let mut colorized = var_enabled_d(WITCHER_COLOR, "true");
+        if !isatty() {
             colorized = false;
         }
         Self { colorized }

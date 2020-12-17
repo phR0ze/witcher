@@ -33,11 +33,11 @@ fn do_something() -> Result<()> {
 
 // Wrap a custom internal error from the get go
 fn do_another_thing() -> Result<()> {
-    do_final_thing().wrap("2nd wrap")
+    do_external_thing().wrap("2nd wrap")
 }
 
 // Chain the external error using std::error::Error features
-fn do_final_thing() -> Result<()> {
+fn do_external_thing() -> Result<()> {
     let err = TestError {
         msg: "cause 1".to_string(),
         inner: Some(Box::new(TestError{

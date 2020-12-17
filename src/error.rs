@@ -86,6 +86,38 @@ impl Error
         })
     }
 
+    /// Return the first external error of the error chain for downcasting.
+    /// The intent is that when writing application code there are cases where your more
+    /// interested in reacting to an external failure.
+    /// If there is no external error then you'll get the last `Error` in the chain.
+    pub fn ext(&self) -> &(dyn StdError + 'static)
+    {
+        let mut stderr: &(dyn StdError + 'static) = self;
+        let mut source = self.source();
+        while let Some(err) = source {
+            stderr = err;
+            if !err.is::<Error>() {
+                break;
+            }
+            source = err.source();
+        }
+        stderr
+    }
+
+    /// Return the last of the error chain for downcasting.
+    /// This will follow the chain of source errors down to the last and return it.
+    /// If this error is the only error it will be returned instead.
+    pub fn last(&self) -> &(dyn StdError + 'static)
+    {
+        let mut err: &(dyn StdError + 'static) = self;
+        let mut source = self.source();
+        while let Some(e) = source {
+            err = e;
+            source = e.source();
+        }
+        err
+    }
+
     /// Extract the name of the given error type and perform some clean up on the type
     fn name<T>(_: T) -> String {
         let mut name = format!("{}", std::any::type_name::<T>());
@@ -121,7 +153,7 @@ impl Error
 
         // Push all `Error` instances to a vec then reverse
         let mut errors: Vec<&Error> = Vec::new();
-        let mut source = (self as &(dyn StdError + 'static)).source();
+        let mut source = self.source();
         errors.push(self);
         while let Some(stderr_ref) = source {
             if let Some(err) = stderr_ref.downcast_ref::<Error>() {
@@ -146,7 +178,7 @@ impl Error
 
             // Write out any std errors in order
             if i == 0 {
-                if let Some(stderr) = (*err as &(dyn StdError + 'static)).source() {
+                if let Some(stderr) = (*err).source() {
                     err.write_std(f, &c, stderr, debug)?;
                 }
             }
@@ -158,7 +190,7 @@ impl Error
     }
 
     // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError, debug: bool) -> fmt::Result
+    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError, _debug: bool) -> fmt::Result
     {
         let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
         let mut source = stderr.source();
@@ -175,7 +207,7 @@ impl Error
         write!(f, "{}", buf)
     }
 
-    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, debug: bool, fullstack: bool) -> fmt::Result
+    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, debug: bool, _fullstack: bool) -> fmt::Result
     {
         let frames: Vec<&Frame> = match debug {
             false => {
