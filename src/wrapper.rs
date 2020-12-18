@@ -23,7 +23,6 @@ pub trait Wrapper<T, E> {
         F: Fn(usize) -> Result<T, E>;
 }
 
-// Handle wrapping a StdError
 impl<T, E> Wrapper<T, E> for Result<T, E>
 where 
     E: StdError + Send + Sync + 'static,

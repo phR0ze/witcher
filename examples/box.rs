@@ -7,14 +7,10 @@ fn do_something() -> Result<()> {
 
 // Add additional context
 fn do_another_thing() -> Result<()> {
-    do_external_thing().wrap("")
-    //do_final_thing().map_err(|err| Error::wrap(err, "").unwrap_err())
-    // match do_final_thing() {
-    //     Err(e) => {
-    //         Error::wrap_box(e, "1st wrap")
-    //     },
-    //     Ok(_) => Ok(()),
-    // }
+    do_external_thing().map_err(|err| {
+        let e = err.downcast::<std::io::Error>().unwrap();
+        Error::raw_wrap(*e, "1st wrap")
+    })
 }
 
 // Chain the external error using std::error::Error features

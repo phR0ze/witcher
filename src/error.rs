@@ -45,14 +45,35 @@ impl Error
 {
     /// Create a new error instance wrapped in a result
     /// 
-    pub fn new<T>(msg: &str) -> Result<T>
+    pub fn raw(msg: &str) -> Self
     {
-        Err(Self {
+        Self {
             msg: format!("{}", msg),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
-        })
+        }
+    }
+
+    /// Wrap the given error and include a contextual message for the error.
+    ///
+    pub fn raw_wrap<E>(err: E, msg: &str) -> Self
+    where
+        E: StdError + Send + Sync + 'static,
+    {
+        Self {
+            msg: format!("{}", msg),
+            type_name: Error::name(&err),
+            backtrace: crate::backtrace::new(),
+            inner: Some(Box::new(err)),
+        }
+    }
+
+    /// Create a new error instance wrapped in a result
+    /// 
+    pub fn new<T>(msg: &str) -> Result<T>
+    {
+        Err(Error::raw(msg))
     }
 
     /// Wrap the given error and include a contextual message for the error.
@@ -61,24 +82,7 @@ impl Error
     where
         E: StdError + Send + Sync + 'static,
     {
-        Err(Self {
-            msg: format!("{}", msg),
-            type_name: Error::name(&err),
-            backtrace: crate::backtrace::new(),
-            inner: Some(Box::new(err)),
-        })
-    }
-
-    /// Wrap the given boxed error and include a contextual message for the error.
-    ///
-    pub fn wrap_box<T>(err: Box<dyn StdError + Send + Sync + 'static>, msg: &str) -> Result<T>
-    {
-        Err(Self {
-            msg: format!("{}", msg),
-            type_name: String::from(STDERROR_TYPE),
-            backtrace: crate::backtrace::new(),
-            inner: Some(err.into()),
-        })
+        Err(Error::raw_wrap(err, msg))
     }
 
     /// Return the first external error of the error chain for downcasting.
@@ -132,16 +136,10 @@ impl Error
         <dyn StdError + 'static>::downcast_mut::<T>(self)
     }
 
-    /// Cast the `Error` type to its parent trait `&dyn std::error::Error + 'static`
-    pub fn std(&self) -> &(dyn StdError + 'static)
-    {
-        self
-    }
-
     /// Implemented directly on the `Error` type to reduce casting required
     pub fn source(&self) -> Option<&(dyn StdError + 'static)>
     {
-        self.std().source()
+        self.as_ref().source()
     }
 
     /// Extract the name of the given error type and perform some clean up on the type
@@ -226,6 +224,12 @@ impl Error
 
 // External trait implementations
 // -------------------------------------------------------------------------------------------------
+
+impl AsRef<dyn StdError> for Error {
+    fn as_ref(&self) -> &(dyn StdError + 'static) {
+        self
+    }
+}
 
 impl StdError for Error
 {

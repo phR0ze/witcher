@@ -35,7 +35,7 @@ fn main() {
     if let Err(err) = do_something() {
 
         // Traverse the error chain
-        let mut source = Some(err.std());
+        let mut source = Some(err.as_ref());
         while let Some(err) = source {
             match_err!(err, {
                 // Using alternate form of display for `Error` to get just the message
