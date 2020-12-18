@@ -299,6 +299,7 @@ any additional terms or conditions.
 ---
 
 ## Backlog <a name="backlog"/></a>
+* Support `Result<T>`
 * Wrap Box better
 * Add rust doc comments
 * Unit tests with 90% code coverage

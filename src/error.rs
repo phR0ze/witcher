@@ -43,12 +43,9 @@ pub struct Error
 }
 impl Error
 {
-
     /// Create a new error instance wrapped in a result
     /// 
-    pub fn new<M>(msg: M) -> Result<()>
-    where 
-        M: Display + Debug + Send + Sync + 'static
+    pub fn new<T>(msg: &str) -> Result<T>
     {
         Err(Self {
             msg: format!("{}", msg),
@@ -60,10 +57,9 @@ impl Error
 
     /// Wrap the given error and include a contextual message for the error.
     ///
-    pub fn wrap<E, M>(err: E, msg: M) -> Result<()>
+    pub fn wrap<T, E>(err: E, msg: &str) -> Result<T>
     where
         E: StdError + Send + Sync + 'static,
-        M: Display + Send + Sync + 'static,
     {
         Err(Self {
             msg: format!("{}", msg),
@@ -75,9 +71,7 @@ impl Error
 
     /// Wrap the given boxed error and include a contextual message for the error.
     ///
-    pub fn wrap_box<M>(err: Box<dyn StdError + Send + Sync + 'static>, msg: M) -> Result<()>
-    where
-        M: Display + Send + Sync + 'static,
+    pub fn wrap_box<T>(err: Box<dyn StdError + Send + Sync + 'static>, msg: &str) -> Result<T>
     {
         Err(Self {
             msg: format!("{}", msg),

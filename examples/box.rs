@@ -1,5 +1,4 @@
 use witcher::prelude::*;
-use std::{io,result,error};
 
 // Add additional context
 fn do_something() -> Result<()> {
@@ -8,18 +7,20 @@ fn do_something() -> Result<()> {
 
 // Add additional context
 fn do_another_thing() -> Result<()> {
-    //do_final_thing().wrap("2nd wrap")
-    match do_final_thing() {
-        Err(e) => {
-            Error::wrap_box(e, "1st wrap")
-        },
-        Ok(_) => Ok(()),
-    }
+    do_external_thing().wrap("")
+    //do_final_thing().map_err(|err| Error::wrap(err, "").unwrap_err())
+    // match do_final_thing() {
+    //     Err(e) => {
+    //         Error::wrap_box(e, "1st wrap")
+    //     },
+    //     Ok(_) => Ok(()),
+    // }
 }
 
 // Chain the external error using std::error::Error features
-fn do_final_thing() -> result::Result<(), Box<dyn error::Error + Send + Sync + 'static>> {
-    Err(io::Error::new(io::ErrorKind::Other, "root cause!"))?
+// https://doc.rust-lang.org/rust-by-example/error/multiple_error_types/boxing_errors.html
+fn do_external_thing() -> Result<(), Box<dyn std::error::Error>> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"))?
 }
 
 fn main() {

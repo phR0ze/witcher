@@ -1,14 +1,11 @@
 use crate::{Error, Result, StdError};
-use std::fmt::{Debug, Display};
 use std::any::TypeId;
 
 /// Define the `wrap` function for Result types
 pub trait Wrapper<T, E> {
 
     /// Wrap the error providing the ability to add more context
-    fn wrap<M>(self, msg: M) -> Result<T>
-    where
-        M: Debug + Display + Send + Sync + 'static;
+    fn wrap(self, msg: &str) -> Result<T>;
 
     /// Check if there is an error and the err is the given error type
     fn err_is<U>(&self) -> bool
@@ -16,29 +13,27 @@ pub trait Wrapper<T, E> {
         U: StdError + 'static;
     
     /// Retry the given function when we have an error `max` number of times.
-    fn retry<F>(self, max: usize, f: F) -> std::result::Result<T, E>
+    fn retry<F>(self, max: usize, f: F) -> Result<T, E>
     where 
-        F: Fn(usize) -> std::result::Result<T, E>;
+        F: Fn(usize) -> Result<T, E>;
 
     /// Retry the given function when we have the concreate error `U` `max` number of times.
-    fn retry_on<F>(self, max: usize, id: TypeId, f: F) -> std::result::Result<T, E>
+    fn retry_on<F>(self, max: usize, id: TypeId, f: F) -> Result<T, E>
     where 
-        F: Fn(usize) -> std::result::Result<T, E>;
+        F: Fn(usize) -> Result<T, E>;
 }
 
 // Handle wrapping a StdError
-impl<T, E> Wrapper<T, E> for std::result::Result<T, E>
+impl<T, E> Wrapper<T, E> for Result<T, E>
 where 
-    T: Debug + Send + Sync + 'static,
     E: StdError + Send + Sync + 'static,
 {
-    fn wrap<M>(self, msg: M) -> Result<T>
-    where
-        M: Debug + Display + Send + Sync + 'static,
+    fn wrap(self, msg: &str) -> Result<T>
     {
-        self.map_err(|err| {
-            Error::wrap(err, msg).unwrap_err()
-        })
+        match self {
+            Err(err) => Error::wrap(err, msg),
+            Ok(val) => Ok(val)
+        }
     }
 
     fn err_is<U>(&self) -> bool
@@ -51,9 +46,9 @@ where
         }
     }
 
-    fn retry<F>(self, max: usize, f: F) -> std::result::Result<T, E>
+    fn retry<F>(self, max: usize, f: F) -> Result<T, E>
     where 
-        F: Fn(usize) -> std::result::Result<T, E>
+        F: Fn(usize) -> Result<T, E>
     {
         let mut retries = 0;
         let mut result = self;
@@ -64,9 +59,9 @@ where
         result
     }
 
-    fn retry_on<F>(self, max: usize, id: TypeId, f: F) -> std::result::Result<T, E>
+    fn retry_on<F>(self, max: usize, id: TypeId, f: F) -> Result<T, E>
     where 
-        F: Fn(usize) -> std::result::Result<T, E>
+        F: Fn(usize) -> Result<T, E>
     {
         let mut retries = 0;
         let mut result = self;
