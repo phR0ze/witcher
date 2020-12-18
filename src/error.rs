@@ -43,19 +43,6 @@ pub struct Error
 }
 impl Error
 {
-    /// Create a new error instance.
-    /// 
-    pub fn raw<M>(msg: M) -> Self
-    where 
-        M: Display + Debug + Send + Sync + 'static
-    {
-        Self {
-            msg: format!("{}", msg),
-            type_name: String::from(ERROR_TYPE),
-            backtrace: crate::backtrace::new(),
-            inner: None,
-        }
-    }
 
     /// Create a new error instance wrapped in a result
     /// 
@@ -63,7 +50,12 @@ impl Error
     where 
         M: Display + Debug + Send + Sync + 'static
     {
-        Err(Error::raw(msg))
+        Err(Self {
+            msg: format!("{}", msg),
+            type_name: String::from(ERROR_TYPE),
+            backtrace: crate::backtrace::new(),
+            inner: None,
+        })
     }
 
     /// Wrap the given error and include a contextual message for the error.

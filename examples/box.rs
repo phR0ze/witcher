@@ -23,5 +23,5 @@ fn do_final_thing() -> result::Result<(), Box<dyn error::Error + Send + Sync + '
 }
 
 fn main() {
-    println!("{}", do_something().unwrap_err());
+    println!("{:?}", do_something().unwrap_err());
 }

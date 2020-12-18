@@ -39,7 +39,7 @@ fn main() {
         while let Some(err) = source {
             match_err!(err, {
                 // Using alternate form of display for `Error` to get just the message
-                x: Error => println!("Found witcher::Error: {:#}", x),
+                x: Error => println!("Found witcher::Error: {}", x),
                 x: SuperError => println!("Found SuperError: {}", x),
                 x: SuperErrorSideKick => println!("Found SuperErrorSideKick: {}", x),
                 _ => println!("unknown")

@@ -20,6 +20,6 @@ fn main() {
     if let Some(e) = root_cause.downcast_ref::<std::io::Error>() {
         println!("Root cause is a std::io::Error: {}", e)
     } else {
-        println!("{}", err)
+        println!("{:?}", err)
     }
 }

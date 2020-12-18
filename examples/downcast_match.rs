@@ -15,6 +15,6 @@ fn main() {
     match_err!(err.last(), {
         x: Error => println!("Root cause is witcher::Error: {}", x),
         x: std::io::Error => println!("Root cause is std::io::Error: {}", x),
-        _ => println!("{}", err)
+        _ => println!("{:?}", err)
     });
 }

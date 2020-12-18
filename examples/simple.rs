@@ -11,5 +11,5 @@ fn do_another_thing() -> Result<()> {
 }
 
 fn main() {
-    println!("{}", do_something().unwrap_err());
+    println!("{:?}", do_something().unwrap_err());
 }

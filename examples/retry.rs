@@ -11,5 +11,5 @@ fn do_external_thing() -> std::io::Result<()> {
 }
 
 fn main() {
-    println!("{}", retry().unwrap_err());
+    println!("{:?}", retry().unwrap_err());
 }

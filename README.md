@@ -62,9 +62,9 @@ the rabbit hole, over to [phR0ze/rust-examples](https://github.com/phR0ze/rust-e
 to say `witcher` is 100% safe code.
 
 # Usage <a name="usage"/></a>
-Return `Result<T>` from witcher and use `wrap` to automatically chain errors and add additional
-contextual messaging at the same time. `wrap` returns a `Result<T>` so there are fewer symbols and
-less typing needed.
+Use the `wrap` extension method on `Result` types to wrap the error with additional contextual
+messaging and automatically chain errors together. `wrap` returns a `Result<T>` so there are fewer
+symbols and less typing needed.
 
 1. Ensure your running a modern enough Rust  
    ***Requires Rust >= 1.30*** as witcher depends on [`source`](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
@@ -76,6 +76,19 @@ less typing needed.
 3. Use the witcher prelude
    ```rust
    use witcher::prelude::*;
+   ```
+4. Use the `Result<T>` alias as your return type
+   ```rust
+   fn do_something() -> Result<()>;
+   ```
+5. Use the `wrap` extension method on Result to provide context
+   ```rust
+   fn do_something() -> Result<()> {
+       do_external_thing().wrap("Failed to slay beast")
+   }
+   fn do_external_thing() -> std::io::Result<()> {
+       Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
+   }
    ```
 
 ## Downcasting <a name="downcasting"/></a>
@@ -286,7 +299,9 @@ any additional terms or conditions.
 ---
 
 ## Backlog <a name="backlog"/></a>
+* Wrap Box better
 * Add rust doc comments
 * Unit tests with 90% code coverage
+* Implement `{:#?}` display output as JSON? or fullstack?
 * Mechanism for converting to JSON
 * `bail!` macro for immediate returns combining `Error::new` and `Error::wrap`
