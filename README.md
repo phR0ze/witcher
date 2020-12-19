@@ -43,7 +43,10 @@ simplified backtraces`.
     * [Alternate](#display-alternate)
     * [Debug](#display-debug)
     * [Alternate Debug](#display-alternate-debug)
+* [Contribute](#contribute)
+  * [Git-Hook](#git-hook)
 * [License](#license)
+  * [Contribution](#contribution)
 * [Backlog](#backlog)
 
 ## Manifesto <a name="manifesto"/></a>
@@ -285,6 +288,17 @@ They follow a level of verbosity in witcher from least information to most i.e. 
 
 #### `Alternate Debug: {:#?}` - *will write out all error messaging with simplified backtracing* <a name="display-alternate-debug"/></a>
 ![Display alternate debug](docs/images/display-alternate-debug.png)
+
+## Contribute <a name="Contribute"/></a>
+Pull requests are always welcome. However understand that they will be evaluated purely on whether
+or not the change fits with my goals/ideals for the project.
+
+### Git-Hook <a name="git-hook"/></a>
+Enable the git hooks to have automatic version increments
+```bash
+cd ~/Projects/witcher
+git config core.hooksPath .githooks
+```
 
 ## License <a name="license"/></a>
 This project is licensed under either of:
