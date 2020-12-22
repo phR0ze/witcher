@@ -1,6 +1,6 @@
-witcher
+WITCHER
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)
+[![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)](https://github.com/phR0ze/witcher/actions)
 [![codecov](https://codecov.io/gh/phR0ze/witcher/branch/main/graph/badge.svg?token=2GYE6JWAPI)](https://codecov.io/gh/phR0ze/witcher)
 ====================================================================================================
 
