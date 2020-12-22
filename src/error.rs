@@ -340,12 +340,6 @@ mod tests {
 
         // Test alternate standard output
         assert_eq!(" error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
-
-        // Test debug output
-        assert_eq!(
-            " error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n",
-            format!("{:?}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped"))
-        );
     }
 
     #[test]
