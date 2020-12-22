@@ -1,4 +1,6 @@
 # witcher
+![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)
+
 Track and put down bugs using simple concise error handling
 
 Avoid terminating execution randomly in your code with `panics` via `unwrap` and `expect` varients,
