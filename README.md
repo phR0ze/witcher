@@ -30,7 +30,7 @@ simplified backtraces`.
 3. ***Safety***
    > 100% safe code without any use of `unsafe`  
    > Zero low level TraitObject manipulation  
-   > Well tested with over 90% code coverage - planned  
+   > Well tested with over 90% code coverage  
 
 ---
 
