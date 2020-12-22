@@ -1,6 +1,6 @@
 [package]
 name = "witcher"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2018"
 authors = ["phR0ze"]
 license = "MIT OR Apache-2.0"
@@ -9,9 +9,15 @@ readme = "README.md"
 homepage = "https://github.com/phR0ze/witcher"
 repository = "https://github.com/phR0ze/witcher"
 exclude = [
+  "docs",
 	"examples",
+  ".git",
+  ".githooks",
+  ".github",
 	"tests",
-	"benches"
+	"benches",
+	"target",
+	".vscode"
 ]
 
 [profile.release]
