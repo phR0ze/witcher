@@ -312,6 +312,7 @@ mod tests {
         msg: String,
         inner: Option<Box<TestError>>,
     }
+    #[cfg(not(tarpaulin_include))]
     impl Debug for TestError {
         fn fmt(&self, f: &mut Formatter) -> fmt::Result {
             write!(f, "{}", self.msg)
@@ -340,6 +341,20 @@ mod tests {
 
         // Test alternate standard output
         assert_eq!(" error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
+
+        let err = Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped");
+        assert_eq!(
+            " error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n",
+            format!("{:?}", err).split("symbol").next().unwrap()
+        );
+        let err = Error::wrapr(
+            TestError { msg: "cause".to_string(), inner: Some(Box::new(TestError { msg: "cause2".to_string(), inner: None })) },
+            "wrapped",
+        );
+        assert_eq!(
+            " error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n cause: std::error::Error: cause2\n",
+            format!("{:#?}", err).split("symbol").next().unwrap()
+        );
     }
 
     #[test]
@@ -354,5 +369,28 @@ mod tests {
         };
 
         assert_eq!(" error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3", format!("{:#}", Error::wrapr(err, "wrapped")));
+    }
+
+    #[test]
+    fn test_ext_and_last() {
+        initialize();
+        let err = TestError {
+            msg: "cause 1".to_string(),
+            inner: Some(Box::new(TestError {
+                msg: "cause 2".to_string(),
+                inner: Some(Box::new(TestError { msg: "cause 3".to_string(), inner: None })),
+            })),
+        };
+        assert_eq!("foo", Error::wrapr(TestError { msg: "cause 1".to_string(), inner: None }, "foo").to_string());
+        assert_eq!("cause 1", Error::wrapr(TestError { msg: "cause 1".to_string(), inner: None }, "foo").ext().to_string());
+        assert_eq!("cause 3", Error::wrapr(err, "foo").last().to_string());
+    }
+
+    #[test]
+    fn test_assist_methods() {
+        initialize();
+        assert!(Error::raw("").is::<Error>());
+        assert!(Error::raw("").downcast_ref::<Error>().is_some());
+        assert!(Error::raw("").downcast_mut::<Error>().is_some());
     }
 }

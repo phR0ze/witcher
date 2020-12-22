@@ -11,8 +11,8 @@ pub fn isatty() -> bool {
 }
 
 /// Check if the given environment variable is enabled or disabled.
-/// Not set, false not case sensitve and 0 will be reported as disabled
-/// all other values will be reported as true.
+/// If the env var is not set, `false` or `0` it will be reported as disabled all other
+/// values will be reported as true.
 pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
     match env::var(key).unwrap_or_else(|_| "false".to_string()).to_lowercase().as_str() {
         "false" | "0" => false,
@@ -21,8 +21,8 @@ pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
 }
 
 /// Check if the given environment variable is enabled or disabled.
-/// Not set, false not case sensitve and 0 will be reported as disabled
-/// all other values will be reported as true.
+/// If the env var is not set, `false` or `0` it will be reported as disabled all other
+/// values will be reported as true.
 /// Supports setting the given default if not set.
 pub fn var_enabled_d<K: AsRef<OsStr>>(key: K, default: &str) -> bool {
     match env::var(key).unwrap_or_else(|_| default.to_string()).to_lowercase().as_str() {
@@ -76,6 +76,13 @@ mod tests {
         INIT.call_once(|| {
             env::set_var("RUST_BACKTRACE", "0");
         });
+    }
+
+    #[test]
+    fn test_var_enabled_d() {
+        initialize();
+        assert!(!var_enabled_d("BLAH", "false"));
+        assert!(var_enabled_d("BLAH", "true"));
     }
 
     #[test]
