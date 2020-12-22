@@ -57,7 +57,7 @@ impl Error
 
     /// Wrap the given error and include a contextual message for the error.
     ///
-    pub fn raw_wrap<E>(err: E, msg: &str) -> Self
+    pub fn wrapr<E>(err: E, msg: &str) -> Self
     where
         E: StdError + Send + Sync + 'static,
     {
@@ -82,7 +82,7 @@ impl Error
     where
         E: StdError + Send + Sync + 'static,
     {
-        Err(Error::raw_wrap(err, msg))
+        Err(Error::wrapr(err, msg))
     }
 
     /// Return the first external error of the error chain for downcasting.
@@ -362,6 +362,23 @@ mod tests {
     }
     
     #[test]
+    fn test_output_levels() {
+        initialize();
+
+        // Test standard output
+        assert_eq!("wrapped", format!("{}", Error::wrapr(TestError{msg: "cause".to_string(), inner: None}, "wrapped")));
+
+        // Test alternate standard output
+        assert_eq!(" error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError{msg: "cause".to_string(), inner: None}, "wrapped")));
+
+        // Test debug output
+        assert_eq!(" error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n", format!("{:?}", Error::wrapr(TestError{msg: "cause".to_string(), inner: None}, "wrapped")));
+
+        // Test alternate debug output
+        assert_eq!(" error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n", format!("{:#?}", Error::wrapr(TestError{msg: "cause".to_string(), inner: None}, "wrapped")));
+    }
+
+    #[test]
     fn test_chained_cause() {
         initialize();
         let err = TestError {
@@ -374,19 +391,7 @@ mod tests {
                 })),
             })),
         };
-        let mut err_str = format!("{}", Error::wrap(err, "wrapped").unwrap_err());
-        err_str = err_str.split("rs:").nth(0).unwrap().to_string();
-        assert_eq!(" error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3\n", err_str);
-    }
 
-//     #[test]
-//     fn test_conversion_from_io_error() {
-//         let err = io_error().unwrap_err();
-//         // if let Some(e) = err.downcast_ref::<std::io::Error>() {
-            
-//         // }
-//         assert_eq!("Custom { kind: Other, error: \"oh no!\" }", err.msg);
-//         //assert_eq!(err.msg, format!("{:?}", err.wrapped.unwrap()));
-//         //println!("Failed: {}", err);
-//     }
+        assert_eq!(" error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3", format!("{:#}", Error::wrapr(err, "wrapped")));
+    }
 }

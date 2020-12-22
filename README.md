@@ -315,6 +315,5 @@ any additional terms or conditions.
 ## Backlog <a name="backlog"/></a>
 * Add rust doc comments
 * Unit tests with 90% code coverage
-* Implement `{:#?}` display output as JSON? or fullstack?
-* Mechanism for converting to JSON
+* Mechanism for converting to JSON maybe use `{:#?}`
 * `bail!` macro for immediate returns combining `Error::new` and `Error::wrap`

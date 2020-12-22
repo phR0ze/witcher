@@ -9,7 +9,7 @@ fn do_something() -> Result<()> {
 fn do_another_thing() -> Result<()> {
     do_external_thing().map_err(|err| {
         let e = err.downcast::<std::io::Error>().unwrap();
-        Error::raw_wrap(*e, "1st wrap")
+        Error::wrapr(*e, "1st wrap")
     })
 }
 

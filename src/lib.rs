@@ -25,6 +25,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub mod prelude {
     pub use super::WITCHER_COLOR;
     pub use super::WITCHER_FULLSTACK;
+    pub use super::bail;
+    pub use super::err;
+    pub use super::wrap;
     pub use super::match_err;
     pub use super::Result;
     pub use super::Error;
@@ -32,18 +35,86 @@ pub mod prelude {
     pub use std::any::TypeId;
 }
 
+/// Bail early from a function with an `Error`.
+/// 
+/// `bail!` just provides an implementation of the common error handling practice of allowing
+/// a user to return immediately with an error. Using `bail!("oh no!")` is the same thing as
+/// if you were to use `return Error::new("oh no!")` or `return Err(Error::raw("oh no!")`.
+/// 
+/// It also provides a variation to allow for format!() type formatting.
+/// 
+/// ### Examples
+/// ```rust,ignore
+/// bail!("oh no!");
+/// bail!("foo: {}", "oh no!");
+/// ```
+#[macro_export]
+macro_rules! bail {
+    // Simple message
+    ($msg:expr) => {
+        return $crate::Error::new($msg);
+    };
+
+    // format! style formatting
+    ($fmt:expr, $($arg:tt)*) => {
+        return $crate::Error::new(&format!($fmt, $($arg)*));
+    };
+}
+
+/// `err!` works just like `bail!` but doesn't return
+/// 
+/// just a simple way to get string formatting like `format!` for new errors.
+/// The same could be done with `Error::raw(format!("{}", msg))` but is more verbose.
+/// 
+/// ### Examples
+/// ```rust,ignore
+/// err!("oh no!");
+/// err!("foo: {}", "oh no!");
+/// ```
+#[macro_export]
+macro_rules! err {
+    // Simple message
+    ($msg:expr) => {
+        $crate::Error::raw($msg);
+    };
+
+    // format! style formatting
+    ($fmt:expr, $($arg:tt)*) => {
+        $crate::Error::raw(&format!($fmt, $($arg)*));
+    };
+}
+
+/// `wrap!` behaves much like the venerable `bail!` but wraps an external error
+/// 
+/// It also provides a variation to allow for format!() type formatting.
+/// 
+/// ### Examples
+/// ```rust,ignore
+/// wrap!(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"), "wrapper msg");
+/// ```
+#[macro_export]
+macro_rules! wrap {
+    // Simple message
+    ($err:expr, $msg:expr) => {
+        return $crate::Error::wrap($err, $msg);
+    };
+
+    // format! style formatting
+    ($err:expr, $fmt:expr, $($arg:tt)*) => {
+        return $crate::Error::wrap($err, &format!($fmt, $($arg)*));
+    };
+}
+
 /// Match on error types.
 /// This only works with errors implementing the `std::error::Error` trait as it makes use of
-/// the standard `is` and `downcast_ref` functions.
+/// the standard `is` and `downcast_ref` implementations.
 /// 
-/// Ensure that the error your working with is a reference.
-///
 /// ### Examples
-/// ```
+/// ```rust
 /// use witcher::prelude::*;
-/// let err = io::Error::new(std::io::ErrorKind::Other, "oh no!");
+/// let err = std::io::Error::new(std::io::ErrorKind::Other, "oh no!");
 /// let res = match_err!(&err, {
-///     _x: io::Error => true,
+///     _x: std::io::Error => true,
 ///     _ => false
 /// });
 /// assert!(res);
@@ -73,6 +144,7 @@ mod tests {
     static INIT: Once = Once::new();
     pub fn initialize() {
         INIT.call_once(|| {
+            env::set_var(crate::WITCHER_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
         });
     }
@@ -94,9 +166,49 @@ mod tests {
             write!(f, "{}", self.0)
         }
     }
+
+    fn bail_simple() -> Result<()> {
+        bail!("oh no!");
+    }
+
+     fn bail_formatted() -> Result<()> {
+        bail!("foo: {}", "oh no!");
+    }
+   
+    fn wrap_simple() -> Result<()> {
+        wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "simple_wrap");
+    }
+
+     fn wrap_formatted() -> Result<()> {
+        wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "foo: {}", "simple_wrap");
+    }
+     
+    #[test]
+    fn test_bail() {
+        initialize();
+        assert_eq!("oh no!", bail_simple().unwrap_err().to_string());
+        assert_eq!("foo: oh no!", bail_formatted().unwrap_err().to_string());
+    } 
+ 
+    #[test]
+    fn test_err() {
+        initialize();
+        assert_eq!("oh no!", err!("oh no!").to_string());
+        assert_eq!("foo: oh no!", err!("foo: {}", "oh no!").to_string());
+    } 
    
     #[test]
+    fn test_wrap() {
+        initialize();
+        assert_eq!("simple_wrap", format!("{}", wrap_simple().unwrap_err()));
+        assert_eq!(" error: simple_wrap\n cause: oh no!", format!("{:#}", wrap_simple().unwrap_err()));
+        assert_eq!("foo: simple_wrap", wrap_formatted().unwrap_err().to_string());
+        assert_eq!(" error: foo: simple_wrap\n cause: oh no!", format!("{:#}", wrap_formatted().unwrap_err()));
+    } 
+    
+    #[test]
     fn test_single() {
+        initialize();
         let err = io::Error::new(std::io::ErrorKind::Other, "oh no!");
         let res = match_err!(&err, {
             _x: io::Error => true,
