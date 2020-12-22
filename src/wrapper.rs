@@ -90,6 +90,10 @@ mod tests {
         });
     }
 
+    fn retry() -> Result<()> {
+        do_external_thing().retry(3, |_| do_external_thing()).wrap("Failed while attacking beast")
+    }
+
     fn retry_on_concreate_error_type_using_err_is() -> Result<()> {
         let mut retries = 0;
         let mut result = do_external_thing();
@@ -111,6 +115,7 @@ mod tests {
     #[test]
     fn test_retry_on() {
         initialize();
+        assert_eq!("Failed while attacking beast", retry().unwrap_err().to_string());
         assert_eq!("Failed while attacking beast", retry_on_concreate_error_type().unwrap_err().to_string());
         assert_eq!("Failed while attacking beast: 3", retry_on_concreate_error_type_using_err_is().unwrap_err().to_string());
     }
