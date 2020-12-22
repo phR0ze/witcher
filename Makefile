@@ -19,5 +19,10 @@ test:
 	@echo "------------------------------------------------------------------------"
 	cargo test --all-features
 
+clippy:
+	@echo "Running clippy..."
+	@echo "------------------------------------------------------------------------"
+	cargo clippy
+
 clean:
 	@rm -rf target

@@ -48,7 +48,7 @@ impl Error
     pub fn raw(msg: &str) -> Self
     {
         Self {
-            msg: format!("{}", msg),
+            msg: msg.to_string(),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
@@ -62,7 +62,7 @@ impl Error
         E: StdError + Send + Sync + 'static,
     {
         Self {
-            msg: format!("{}", msg),
+            msg: msg.to_string(),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
@@ -144,7 +144,7 @@ impl Error
 
     /// Extract the name of the given error type and perform some clean up on the type
     fn name<T>(_: T) -> String {
-        let mut name = format!("{}", std::any::type_name::<T>());
+        let mut name = std::any::type_name::<T>().to_string();
 
         // Strip off prefixes
         if name.starts_with('&') {
@@ -156,7 +156,7 @@ impl Error
         }
 
         // Strip off suffixes
-        name = String::from(name.split("<").next().unwrap_or("<unknown>"));
+        name = String::from(name.split('<').next().unwrap_or("<unknown>"));
 
         // Hide full Error path
         if name == LONG_ERROR_TYPE {
@@ -172,13 +172,13 @@ impl Error
         let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
         let mut source = stderr.source();
         while let Some(inner) = source {
-            if buf.chars().last().unwrap() != '\n' {
+            if !buf.ends_with('\n') {
                 buf += &"\n";
             }
             buf += &format!(" cause: {}: {}", c.red(STDERROR_TYPE), c.red(inner));
             source = inner.source();
         }
-        if buf.chars().last().unwrap() != '\n' {
+        if !buf.ends_with('\n') {
             buf += &"\n";
         }
         write!(f, "{}", buf)
@@ -186,21 +186,20 @@ impl Error
 
     fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, fullstack: bool) -> fmt::Result
     {
-        let frames: Vec<&Frame> = match fullstack {
-            false => {
-                let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
-                match parent{
-                    Some(parent) => {
-                        let len = frames.len();
-                        let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
-                        frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
-                    },
-                    _ => frames
-                }
-            },
+        let frames: Vec<&Frame> = if !fullstack {
+            let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
+            match parent{
+                Some(parent) => {
+                    let len = frames.len();
+                    let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
+                    frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
+                },
+                _ => frames
+            }
 
-            // Fullstack `true` means don't filter anything
-            _ => self.backtrace.iter().collect()
+        // Fullstack `true` means don't filter anything
+        } else {
+            self.backtrace.iter().collect()
         };
 
         let len = frames.len();
@@ -215,7 +214,7 @@ impl Error
                 }
             }
             if i + 1 < len {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
         }
         Ok(())
@@ -266,10 +265,11 @@ impl Debug for Error {
         // Pop them back off LIFO style
         let len = errors.len();
         for (i, err) in errors.iter().enumerate() {
-            let mut parent: Option<&Error> = None;
-            if i + 1 < len {
-                parent = Some(errors[i+1]);
-            }
+            let parent: Option<&Error> = if i + 1 < len {
+                Some(errors[i+1])
+            } else {
+                None
+            };
 
             // Write out the error wrapper
             writeln!(f, " error: {}: {}", c.red(ERROR_TYPE), c.red(&err.msg))?;
@@ -284,7 +284,7 @@ impl Debug for Error {
             // Write out the frames minus those in the wrapping error
             err.write_frames(f, &c, parent, fullstack)?;
             if i + 1 < len {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
         }
         Ok(())
@@ -306,10 +306,10 @@ impl Display for Error {
         // Traverse the whole chain
         let mut source = self.source();
         while let Some(stderr) = source {
-            if buf.chars().last().unwrap() != '\n' {
+            if !buf.ends_with('\n') {
                 buf += &"\n";
             }
-            buf += &format!(" cause: ");
+            buf += &" cause: ".to_string();
             match stderr.downcast_ref::<Error>() {
                 Some(err) => buf += &format!("{}", c.red(&err.msg)),
                 _ => buf += &format!("{}", c.red(stderr))

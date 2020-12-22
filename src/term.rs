@@ -14,7 +14,7 @@ pub fn isatty() -> bool {
 /// Not set, false not case sensitve and 0 will be reported as disabled
 /// all other values will be reported as true.
 pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
-    match env::var(key).unwrap_or("false".to_string()).to_lowercase().as_str() {
+    match env::var(key).unwrap_or_else(|_| "false".to_string()).to_lowercase().as_str() {
         "false" | "0" => false,
         _ => true
     }
@@ -25,7 +25,7 @@ pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
 /// all other values will be reported as true.
 /// Supports setting the given default if not set.
 pub fn var_enabled_d<K: AsRef<OsStr>>(key: K, default: &str) -> bool {
-    match env::var(key).unwrap_or(default.to_string()).to_lowercase().as_str() {
+    match env::var(key).unwrap_or_else(|_| default.to_string()).to_lowercase().as_str() {
         "false" | "0" => false,
         _ => true
     }
@@ -37,20 +37,23 @@ pub struct Colorized {
 
 impl Colorized {
     pub fn new() -> Self {
-        let mut colorized = var_enabled_d(WITCHER_COLOR, "true");
-        if !isatty() {
-            colorized = false;
+        Self {
+            colorized: if isatty() {
+                var_enabled_d(WITCHER_COLOR, "true")
+            } else {
+                false
+            }
         }
-        Self { colorized }
     }
 
     pub fn red<M>(&self, msg: M) -> ColoredString
     where
         M: Display,
     {
-        match self.colorized {
-            true => format!("{}", msg).bright_red(),
-            _ => format!("{}", msg).bright_red().clear(),
+        if self.colorized {
+            format!("{}", msg).bright_red()
+        } else {
+            format!("{}", msg).bright_red().clear()
         }
     }
 
@@ -58,9 +61,10 @@ impl Colorized {
     where
         M: Display,
     {
-        match self.colorized {
-            true => format!("{}", msg).bright_cyan(),
-            _ => format!("{}", msg).bright_cyan().clear(),
+        if self.colorized {
+            format!("{}", msg).bright_cyan()
+        } else {
+            format!("{}", msg).bright_cyan().clear()
         }
     }
 }

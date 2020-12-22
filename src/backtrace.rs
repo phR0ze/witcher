@@ -81,22 +81,22 @@ impl Frame {
 
 // Write out a shortened simplified path if possible
 fn simple_path(filename: Option<&Path>) -> String {
-    let mut w = String::new();
+    let mut f = String::new();
     if let Some(file) = filename {
 
         // Strip off the current working directory to simplify the path
         let cwd = std::env::current_dir();
         if let Ok(cwd) = &cwd {
             if let Ok(suffix) = file.strip_prefix(cwd) {
-                write!(w, "{}", suffix.display()).omit();
-                return w
+                write!(f, "{}", suffix.display()).omit();
+                return f
             }
         }
-        write!(w, "{}", file.display()).omit();
-        return w
+        write!(f, "{}", file.display()).omit();
+    } else {
+        write!(f, "<unknown>").omit();
     }
-    write!(w, "<unknown>").omit();
-    return w
+    f
 }
 
 // Helper to suppress unwanted result checks
@@ -105,12 +105,7 @@ trait Omit {
     fn omit(&self);
 }
 impl Omit for std::fmt::Result {
-     fn omit(&self) {
-         let _ = match self {
-             Ok(_) => (),
-             Err(_) => (),
-         };
-     }
+     fn omit(&self) { }
 }
 
 // Unit tests

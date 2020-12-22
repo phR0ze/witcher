@@ -1,0 +1,33 @@
+name: build
+
+# Triggered on pushes to the repo
+on: 
+  push:
+    branches:
+    - master
+
+# Jobs to execute when triggered
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Standard action to pull source
+        uses: actions/checkout@v2
+
+      - name: Setup Rust build environment
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build application
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-features
+
+      - name: Test application
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
+
