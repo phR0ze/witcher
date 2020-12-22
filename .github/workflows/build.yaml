@@ -11,10 +11,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Standard action to pull source
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Setup Rust build environment
+      - name: Install stable Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -36,3 +36,16 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Clean
+        uses: actions-rs/cargo@v1
+        with:
+          command: clean
+
+      - name: Tarpaulin code coverage
+        id: coverage
+        uses: actions-rs/tarpaulin@v0.1
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v1.0.2
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
