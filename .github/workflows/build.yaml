@@ -4,7 +4,7 @@ name: build
 on: 
   push:
     branches:
-    - master
+    - main
 
 # Jobs to execute when triggered
 jobs:
@@ -30,4 +30,9 @@ jobs:
         with:
           command: test
           args: --all-features
+
+      - name: Lint application
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
