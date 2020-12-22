@@ -1,9 +1,9 @@
+use crate::WITCHER_COLOR;
 use colored::*;
 use libc;
 use std::env;
-use std::fmt::Display;
 use std::ffi::OsStr;
-use crate::WITCHER_COLOR;
+use std::fmt::Display;
 
 /// Determine if the environment has an attached tty
 pub fn isatty() -> bool {
@@ -16,7 +16,7 @@ pub fn isatty() -> bool {
 pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
     match env::var(key).unwrap_or_else(|_| "false".to_string()).to_lowercase().as_str() {
         "false" | "0" => false,
-        _ => true
+        _ => true,
     }
 }
 
@@ -27,7 +27,7 @@ pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
 pub fn var_enabled_d<K: AsRef<OsStr>>(key: K, default: &str) -> bool {
     match env::var(key).unwrap_or_else(|_| default.to_string()).to_lowercase().as_str() {
         "false" | "0" => false,
-        _ => true
+        _ => true,
     }
 }
 
@@ -37,13 +37,7 @@ pub struct Colorized {
 
 impl Colorized {
     pub fn new() -> Self {
-        Self {
-            colorized: if isatty() {
-                var_enabled_d(WITCHER_COLOR, "true")
-            } else {
-                false
-            }
-        }
+        Self { colorized: if isatty() { var_enabled_d(WITCHER_COLOR, "true") } else { false } }
     }
 
     pub fn red<M>(&self, msg: M) -> ColoredString

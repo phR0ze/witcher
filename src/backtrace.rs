@@ -1,16 +1,9 @@
 use std::fmt::Write;
 use std::path::Path;
 
-const DEPENDENCY_FILE_PREFIXES: &[&str] = &[
-    "/rustc/",
-    "src/libstd/",
-    "src/libpanic_unwind/",
-    "src/libtest/",
-];
+const DEPENDENCY_FILE_PREFIXES: &[&str] = &["/rustc/", "src/libstd/", "src/libpanic_unwind/", "src/libtest/"];
 
-const DEPENDENCY_FILE_CONTAINS: &[&str] = &[
-    "/.cargo/registry/src/",
-];
+const DEPENDENCY_FILE_CONTAINS: &[&str] = &["/.cargo/registry/src/"];
 
 const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "std::",
@@ -34,17 +27,16 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
     "__GI__",
 ];
 
-const DEPENDENCY_SYM_CONTAINS: &[&str] = &[
-    "as witcher::wrapper::Wrapper",
-];
-
+const DEPENDENCY_SYM_CONTAINS: &[&str] = &["as witcher::wrapper::Wrapper"];
 
 // Process the given backtrace return a simplified Frame collection
 pub(crate) fn new() -> Vec<Frame> {
     let bt = backtrace::Backtrace::new();
 
-    bt.frames().iter().flat_map(|x| x.symbols()).map(|sym| {
-        Frame {
+    bt.frames()
+        .iter()
+        .flat_map(|x| x.symbols())
+        .map(|sym| Frame {
             symbol: match sym.name() {
                 Some(name) => format!("{:#}", name),
                 None => String::from("<unknown>"),
@@ -52,20 +44,19 @@ pub(crate) fn new() -> Vec<Frame> {
             filename: simple_path(sym.filename()),
             lineno: sym.lineno(),
             column: sym.colno(),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 // Provide a convenient way to work with frame information
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct Frame {
-    pub symbol: String,         // name of the symbol or '<unknown>'
-    pub filename: String,       // filename the symbole occurred in
-    pub lineno: Option<u32>,    // line number the symbol occurred on
-    pub column: Option<u32>,    // column number the symbol occurred on
+    pub symbol: String,      // name of the symbol or '<unknown>'
+    pub filename: String,    // filename the symbole occurred in
+    pub lineno: Option<u32>, // line number the symbol occurred on
+    pub column: Option<u32>, // column number the symbol occurred on
 }
 impl Frame {
-
     // Check if this is a known rust dependency
     pub fn is_dependency(&self) -> bool {
         if DEPENDENCY_SYM_PREFIXES.iter().any(|x| self.symbol.starts_with(x))
@@ -83,13 +74,12 @@ impl Frame {
 fn simple_path(filename: Option<&Path>) -> String {
     let mut f = String::new();
     if let Some(file) = filename {
-
         // Strip off the current working directory to simplify the path
         let cwd = std::env::current_dir();
         if let Ok(cwd) = &cwd {
             if let Ok(suffix) = file.strip_prefix(cwd) {
                 write!(f, "{}", suffix.display()).omit();
-                return f
+                return f;
             }
         }
         write!(f, "{}", file.display()).omit();
@@ -105,7 +95,7 @@ trait Omit {
     fn omit(&self);
 }
 impl Omit for std::fmt::Result {
-     fn omit(&self) { }
+    fn omit(&self) {}
 }
 
 // Unit tests
@@ -113,22 +103,12 @@ impl Omit for std::fmt::Result {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_frame_equality() {
-        let mut frame1 = Frame {
-            symbol: String::from("symbol"),
-            filename: String::from("filename"),
-            lineno: Some(1),
-            column: Some(2),
-        };
+        let mut frame1 = Frame { symbol: String::from("symbol"), filename: String::from("filename"), lineno: Some(1), column: Some(2) };
 
-        let frame2 = Frame {
-            symbol: String::from("symbol"),
-            filename: String::from("filename"),
-            lineno: Some(1),
-            column: Some(2),
-        };
+        let frame2 = Frame { symbol: String::from("symbol"), filename: String::from("filename"), lineno: Some(1), column: Some(2) };
 
         assert_eq!(true, frame1 == frame2);
         assert_eq!(frame1, frame2);
@@ -151,5 +131,5 @@ mod tests {
     fn test_omit() {
         let mut w = String::new();
         write!(&mut w, "foobar").omit();
-    } 
+    }
 }

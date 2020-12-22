@@ -28,12 +28,11 @@ fn do_something() -> Result<()> {
 }
 
 fn do_external_thing() -> std::result::Result<(), SuperError> {
-    Err(SuperError {side: SuperErrorSideKick})
+    Err(SuperError { side: SuperErrorSideKick })
 }
 
 fn main() {
     if let Err(err) = do_something() {
-
         // Traverse the error chain
         let mut source = Some(err.as_ref());
         while let Some(err) = source {

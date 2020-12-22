@@ -1,0 +1,201 @@
+# https://rust-lang.github.io/rustfmt/
+# https://github.com/rust-lang/rustfmt/blob/master/src/config/options.rs
+
+# Maximum width of an array literal before falling back to vertical formatting.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#array_width
+#
+# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Possible values: any positive integer that is less than or equal to the value specified for `max_width`
+# Stable: Yes
+#
+# array_width = 60                        
+
+# Maximum width of the args of a function-like attributes before falling back to vertical formatting.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#attr_fn_like_width
+#
+# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Possible values: any positive integer that is less than or equal to the value specified for max_width
+# Stable: Yes
+# attr_fn_like_width = 70
+
+# Where to put a binary operator when a binary expression goes multiline.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#binop_separator
+#
+# Default value: "Front"
+# Possible values: "Front", "Back"
+# Stable: Yes
+binop_separator = "Front"
+
+# Minimum number of blank lines which must be put between statements
+# https://rust-lang.github.io/rustfmt/?version=master&search=#blank_lines_lower_bound
+#
+# Default value: 0
+# Possible values: unsigned integer
+# Stable: No (tracking issue: #3382)
+blank_lines_lower_bound = 0
+
+# Maximum number of blank lines which can be put between statements
+# https://rust-lang.github.io/rustfmt/?version=master&search=#blank_lines_upper_bound
+#
+# Default value: 1
+# Possible values: any non-negative integer
+# Stable: No (tracking issue: #3381)
+blank_lines_upper_bound = 1
+
+# Brace style for items
+# https://rust-lang.github.io/rustfmt/?version=master&search=#brace_style
+#
+# Default value: "SameLineWhere"
+# Possible values: "AlwaysNextLine", "PreferSameLine", "SameLineWhere"
+# Stable: No (tracking issue: #3376)
+brace_style = "AlwaysNextLine"
+
+# Maximum width of a chain to fit on one line.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#chain_width
+#
+# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Possible values: any positive integer that is less than or equal to the value specified for max_width
+# Stable: Yes
+chain_width = 80
+
+# Combine control expressions with function calls.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#combine_control_expr
+#
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3369)
+combine_control_expr = true
+
+# Maximum length of comments. No effect unlesswrap_comments = true.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#comment_width
+#
+# Default value: 80
+# Possible values: any positive integer
+# Stable: No (tracking issue: #3349)
+comment_width = 100
+
+# Replace strings of _ wildcards by a single .. in tuple patterns
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3384)
+condense_wildcard_suffixes = true
+
+
+# Brace style for control flow constructs
+# https://rust-lang.github.io/rustfmt/?version=master&search=#control_brace_style
+#
+# Default value: "AlwaysSameLine"
+# Possible values: "AlwaysNextLine", "AlwaysSameLine", "ClosingNextLine"
+# Stable: No (tracking issue: #3377)
+control_brace_style = "AlwaysSameLine"
+
+# Specifies which edition is used by the parser.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#edition
+#
+# Default value: "2015"
+# Possible values: "2015", "2018"
+# Stable: Yes
+edition = "2018"
+
+# Put empty-body functions and impls on a single line
+# https://rust-lang.github.io/rustfmt/?version=master&search=#empty_item_single_line
+#
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3356)
+empty_item_single_line = true
+
+# The maximum length of enum variant having discriminant, that gets vertically aligned with others.
+# Variants without discriminants would be ignored for the purpose of alignment.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#enum_discrim_align_threshold
+#
+# Default value : 0
+# Possible values: any positive integer
+# Stable: No (tracking issue: #3372)
+enum_discrim_align_threshold = 0
+
+# Error if Rustfmt is unable to get all lines within max_width, except for comments and string literals.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#error_on_line_overflow
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3391)
+error_on_line_overflow = false
+
+# Error if unable to get comments or string literals within max_width, or they are left with trailing whitespaces.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#error_on_unformatted
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3392)
+error_on_unformatted = false
+
+# Control the layout of parameters in a function signature
+# https://rust-lang.github.io/rustfmt/?version=master&search=#fn_params_layout
+#
+# Default value: "Tall"
+# Possible values: "Compressed", "Tall", "Vertical"
+# Stable: Yes
+fn_params_layout = "Compressed"
+
+# Maximum width of the args of a function call before falling back to vertical formatting.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#fn_call_width
+#
+# Default value: a percentage of `max_width` provided by `width_heuristics`
+# Possible values: any positive integer that is less than or equal to the value specified for max_width
+# Stable: Yes
+#fn_call_width = 60
+
+# Put single-expression functions on a single line
+# https://rust-lang.github.io/rustfmt/?version=master&search=#fn_single_line
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3358)
+fn_single_line = true
+
+
+# Force multiline closure and match arm bodies to be wrapped in a block
+# https://rust-lang.github.io/rustfmt/?version=master&search=#force_multiline_blocks
+#
+# Default value: false
+# Possible values: false, true
+# Stable: No (tracking issue: #3374)
+force_multiline_blocks = false
+
+# TDB the rest
+format_macro_matchers = false           # Format the metavariable matching patterns in macros.
+format_macro_bodies = false             # Format the bodies of macros.
+format_strings = false                  # Format string literals where necessary
+hard_tabs = false                       # Use tab characters for indentation, spaces for alignment
+imports_indent = "Visual"               # Indent style of imports
+imports_layout = "Mixed"                # Item layout inside a imports block
+indent_style = "Visual"                 # Indent on expressions or items.
+inline_attribute_width = 100            # Write an item and its attribute on the same line if their combined width is below a threshold
+match_arm_blocks = false                # Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
+match_block_trailing_comma = false      # Put a trailing comma after a block based match arm (non-block arms are not affected)
+max_width = 150                         # Maximum width of each line
+merge_derives = true                    # Merge multiple derives into a single one.
+merge_imports = true                    # Merge multiple imports into a single nested import.
+normalize_doc_attributes = false        # Convert #![doc] and #[doc] attributes to //! and /// doc comments.
+overflow_delimited_expr = true          # When structs, slices, arrays, and block/array-like macros are used as the last argument in an expression list, allow overflow.
+reorder_impl_items = false              # Reorder impl items. type and const are put first, then macros and methods.
+reorder_imports = true                  # Reorder import and extern crate statements alphabetically in groups (a group is separated by a newline).
+reorder_modules = true                  # Reorder mod declarations alphabetically in group.
+space_after_colon = false               # Leave a space after the colon.
+space_before_colon = false              # Leave a space before the colon.
+spaces_around_ranges = false            # Put spaces around the .., ..=, and ... range operators
+struct_field_align_threshold = 0        # The maximum diff of width between struct fields to be aligned with each other.
+struct_lit_single_line = true           # Put small struct literals on a single line
+tab_spaces = 4                          # Number of spaces per tab
+trailing_comma = "Vertical"             # How to handle trailing commas for lists
+use_small_heuristics = "Max"            # Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
+where_single_line = true                # Forces the where clause to be laid out on a single line.
+
+# No brainers
+type_punctuation_density = "Wide"       # Determines if + or = are wrapped in spaces in the punctuation of types
+use_try_shorthand = true                # Replace uses of the try! macro by the ? shorthand
+wrap_comments = true                    # Break comments to fit on the line
+version = "Two"                         # Don't need to be backwards compatible with One
+ignore = []

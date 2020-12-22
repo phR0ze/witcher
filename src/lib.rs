@@ -23,26 +23,26 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// use witcher::prelude::*;
 /// ```
 pub mod prelude {
-    pub use super::WITCHER_COLOR;
-    pub use super::WITCHER_FULLSTACK;
     pub use super::bail;
     pub use super::err;
-    pub use super::wrap;
     pub use super::match_err;
-    pub use super::Result;
+    pub use super::wrap;
     pub use super::Error;
+    pub use super::Result;
     pub use super::Wrapper;
+    pub use super::WITCHER_COLOR;
+    pub use super::WITCHER_FULLSTACK;
     pub use std::any::TypeId;
 }
 
 /// Bail early from a function with an `Error`.
-/// 
+///
 /// `bail!` just provides an implementation of the common error handling practice of allowing
 /// a user to return immediately with an error. Using `bail!("oh no!")` is the same thing as
 /// if you were to use `return Error::new("oh no!")` or `return Err(Error::raw("oh no!")`.
-/// 
+///
 /// It also provides a variation to allow for format!() type formatting.
-/// 
+///
 /// ### Examples
 /// ```rust,ignore
 /// bail!("oh no!");
@@ -62,10 +62,10 @@ macro_rules! bail {
 }
 
 /// `err!` works just like `bail!` but doesn't return
-/// 
+///
 /// just a simple way to get string formatting like `format!` for new errors.
 /// The same could be done with `Error::raw(format!("{}", msg))` but is more verbose.
-/// 
+///
 /// ### Examples
 /// ```rust,ignore
 /// err!("oh no!");
@@ -85,9 +85,9 @@ macro_rules! err {
 }
 
 /// `wrap!` behaves much like the venerable `bail!` but wraps an external error
-/// 
+///
 /// It also provides a variation to allow for format!() type formatting.
-/// 
+///
 /// ### Examples
 /// ```rust,ignore
 /// wrap!(std::io::Error::new(std::io::ErrorKind::Other, "oh no!"), "wrapper msg");
@@ -108,7 +108,7 @@ macro_rules! wrap {
 /// Match on error types.
 /// This only works with errors implementing the `std::error::Error` trait as it makes use of
 /// the standard `is` and `downcast_ref` implementations.
-/// 
+///
 /// ### Examples
 /// ```rust
 /// use witcher::prelude::*;
@@ -171,32 +171,32 @@ mod tests {
         bail!("oh no!");
     }
 
-     fn bail_formatted() -> Result<()> {
+    fn bail_formatted() -> Result<()> {
         bail!("foo: {}", "oh no!");
     }
-   
+
     fn wrap_simple() -> Result<()> {
         wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "simple_wrap");
     }
 
-     fn wrap_formatted() -> Result<()> {
+    fn wrap_formatted() -> Result<()> {
         wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "foo: {}", "simple_wrap");
     }
-     
+
     #[test]
     fn test_bail() {
         initialize();
         assert_eq!("oh no!", bail_simple().unwrap_err().to_string());
         assert_eq!("foo: oh no!", bail_formatted().unwrap_err().to_string());
-    } 
- 
+    }
+
     #[test]
     fn test_err() {
         initialize();
         assert_eq!("oh no!", err!("oh no!").to_string());
         assert_eq!("foo: oh no!", err!("foo: {}", "oh no!").to_string());
-    } 
-   
+    }
+
     #[test]
     fn test_wrap() {
         initialize();
@@ -204,8 +204,8 @@ mod tests {
         assert_eq!(" error: simple_wrap\n cause: oh no!", format!("{:#}", wrap_simple().unwrap_err()));
         assert_eq!("foo: simple_wrap", wrap_formatted().unwrap_err().to_string());
         assert_eq!(" error: foo: simple_wrap\n cause: oh no!", format!("{:#}", wrap_formatted().unwrap_err()));
-    } 
-    
+    }
+
     #[test]
     fn test_single() {
         initialize();
@@ -215,8 +215,8 @@ mod tests {
             _ => false
         });
         assert!(res);
-    } 
-  
+    }
+
     #[test]
     fn test_match_err() {
         initialize();
@@ -229,7 +229,7 @@ mod tests {
         let mut buf = String::new();
         for boxed in errors.iter() {
             let err: &(dyn StdError + 'static) = &**boxed;
-            buf += & match_err!(err, {
+            buf += &match_err!(err, {
                 x: io::Error => format!("io::Error: {}\n", x),
                 x: TestError1 => format!("TestError1: {}\n", x),
                 x: TestError2 => format!("TestError2: {}\n", x),
@@ -237,5 +237,5 @@ mod tests {
             });
         }
         assert_eq!("TestError1: test1\nTestError2: test2\nio::Error: test3\n", buf);
-    } 
+    }
 }

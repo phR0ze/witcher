@@ -12,7 +12,6 @@ fn do_value_thing() -> Result<String> {
     Ok("return value".into())
 }
 
-
 fn main() {
     println!("{}", do_value_thing().unwrap());
     println!("{:?}", do_something().unwrap_err());

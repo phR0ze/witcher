@@ -23,8 +23,8 @@ fn main() {
             "alternate" => println!("{:#}", do_something().unwrap_err()),
             "debug" => println!("{:?}", do_something().unwrap_err()),
             "alternate-debug" => println!("{:#?}", do_something().unwrap_err()),
-            _ => println!("{:?}", do_something().unwrap_err())
+            _ => println!("{:?}", do_something().unwrap_err()),
         },
-        _ => println!("{:?}", do_something().unwrap_err())
+        _ => println!("{:?}", do_something().unwrap_err()),
     }
 }
