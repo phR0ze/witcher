@@ -1,6 +1,5 @@
 use crate::WITCHER_COLOR;
 use colored::*;
-use libc;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Display;
@@ -14,10 +13,7 @@ pub fn isatty() -> bool {
 /// If the env var is not set, `false` or `0` it will be reported as disabled all other
 /// values will be reported as true.
 pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
-    match env::var(key).unwrap_or_else(|_| "false".to_string()).to_lowercase().as_str() {
-        "false" | "0" => false,
-        _ => true,
-    }
+    !matches!(env::var(key).unwrap_or_else(|_| "false".to_string()).to_lowercase().as_str(), "false" | "0")
 }
 
 /// Check if the given environment variable is enabled or disabled.
@@ -25,10 +21,7 @@ pub fn var_enabled<K: AsRef<OsStr>>(key: K) -> bool {
 /// values will be reported as true.
 /// Supports setting the given default if not set.
 pub fn var_enabled_d<K: AsRef<OsStr>>(key: K, default: &str) -> bool {
-    match env::var(key).unwrap_or_else(|_| default.to_string()).to_lowercase().as_str() {
-        "false" | "0" => false,
-        _ => true,
-    }
+    !matches!(env::var(key).unwrap_or_else(|_| default.to_string()).to_lowercase().as_str(), "false" | "0")
 }
 
 pub struct Colorized {

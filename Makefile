@@ -19,10 +19,10 @@ test:
 	@echo "------------------------------------------------------------------------"
 	cargo test --all-features
 
-clippy:
+lint:
 	@echo "Running clippy..."
 	@echo "------------------------------------------------------------------------"
 	cargo clippy
 
 clean:
-	@rm -rf target
+	cargo clean

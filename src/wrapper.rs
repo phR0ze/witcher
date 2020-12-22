@@ -75,16 +75,43 @@ where
     }
 }
 
-// // Unit tests
-// // -------------------------------------------------------------------------------------------------
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::fmt::Write;
+// Unit tests
+// -------------------------------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn test_the() {
-//         let mut w = String::new();
-//         write!(&mut w, "foobar").omit();
-//     }
-// }
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    pub fn initialize() {
+        INIT.call_once(|| {
+            std::env::set_var(crate::WITCHER_COLOR, "0");
+            std::env::set_var("RUST_BACKTRACE", "0");
+        });
+    }
+
+    fn retry_on_concreate_error_type_using_err_is() -> Result<()> {
+        let mut retries = 0;
+        let mut result = do_external_thing();
+        while retries < 3 && result.err_is::<std::io::Error>() {
+            retries += 1;
+            result = do_external_thing();
+        }
+        result.wrap(&format!("Failed while attacking beast: {}", retries))
+    }
+
+    fn retry_on_concreate_error_type() -> Result<()> {
+        do_external_thing().retry_on(3, TypeId::of::<std::io::Error>(), |_| do_external_thing()).wrap("Failed while attacking beast")
+    }
+
+    fn do_external_thing() -> std::io::Result<()> {
+        Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+    }
+
+    #[test]
+    fn test_retry_on() {
+        initialize();
+        assert_eq!("Failed while attacking beast", retry_on_concreate_error_type().unwrap_err().to_string());
+        assert_eq!("Failed while attacking beast: 3", retry_on_concreate_error_type_using_err_is().unwrap_err().to_string());
+    }
+}
