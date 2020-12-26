@@ -1,6 +1,6 @@
 [package]
 name = "witcher"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2018"
 authors = ["phR0ze"]
 license = "MIT OR Apache-2.0"
@@ -20,13 +20,18 @@ exclude = [
 	".vscode"
 ]
 
+# Higher the opt-level value the slower the compile time
 [profile.release]
-lto = true      # optimize release build
+opt-level = 3   # Optimize for speed over size
+lto = true      # Futher assist in optimization
 debug = true    # keep symbols in release for debug
 
-[dependencies]
-colored = "2"
-backtrace = "0.3"
-libc = { version = "0.2", default-features = false }
+[profile.dev]
+opt-level = 0   # Default no optimization
 
+[dependencies]
+gory = "0.1.*"
+backtrace = "0.3.*"
+
+# Examples and tests are built with these dependencies
 [dev-dependencies]

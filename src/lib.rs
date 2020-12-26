@@ -1,14 +1,7 @@
 mod backtrace;
 mod error;
-mod term;
 mod wrapper;
 use std::error::Error as StdError;
-
-/// Environment variable name for enabling/disabling color
-pub const WITCHER_COLOR: &str = "WITCHER_COLOR";
-
-/// Environment variable name for enabling/disabling fullstack tracing
-pub const WITCHER_FULLSTACK: &str = "WITCHER_FULLSTACK";
 
 pub use crate::error::Error;
 pub use crate::wrapper::Wrapper;
@@ -30,8 +23,6 @@ pub mod prelude {
     pub use super::Error;
     pub use super::Result;
     pub use super::Wrapper;
-    pub use super::WITCHER_COLOR;
-    pub use super::WITCHER_FULLSTACK;
     pub use std::any::TypeId;
 }
 
@@ -144,7 +135,7 @@ mod tests {
     static INIT: Once = Once::new();
     pub fn initialize() {
         INIT.call_once(|| {
-            env::set_var(crate::WITCHER_COLOR, "0");
+            env::set_var(gory::TERM_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
         });
     }

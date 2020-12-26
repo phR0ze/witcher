@@ -1,7 +1,6 @@
 use crate::backtrace::Frame;
-use crate::term::{self, Colorized};
-use crate::WITCHER_FULLSTACK;
 use crate::{Result, StdError};
+use gory::*;
 use std::convert::From;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -146,14 +145,14 @@ impl Error {
     }
 
     // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, c: &Colorized, stderr: &dyn StdError) -> fmt::Result {
-        let mut buf = format!(" cause: {}: {}", c.red(&self.type_name), c.red(stderr));
+    fn write_std(&self, f: &mut Formatter<'_>, stderr: &dyn StdError) -> fmt::Result {
+        let mut buf = format!(" cause: {}: {}", self.type_name.red(), stderr.to_string().red());
         let mut source = stderr.source();
         while let Some(inner) = source {
             if !buf.ends_with('\n') {
                 buf += &"\n";
             }
-            buf += &format!(" cause: {}: {}", c.red(STDERROR_TYPE), c.red(inner));
+            buf += &format!(" cause: {}: {}", STDERROR_TYPE.red(), inner.to_string().red());
             source = inner.source();
         }
         if !buf.ends_with('\n') {
@@ -162,7 +161,7 @@ impl Error {
         write!(f, "{}", buf)
     }
 
-    fn write_frames(&self, f: &mut Formatter<'_>, c: &Colorized, parent: Option<&Error>, fullstack: bool) -> fmt::Result {
+    fn write_frames(&self, f: &mut Formatter<'_>, parent: Option<&Error>, fullstack: bool) -> fmt::Result {
         let frames: Vec<&Frame> = if !fullstack {
             let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
             match parent {
@@ -181,7 +180,7 @@ impl Error {
 
         let len = frames.len();
         for (i, frame) in frames.iter().enumerate() {
-            writeln!(f, "symbol: {}", c.cyan(&frame.symbol))?;
+            writeln!(f, "symbol: {}", frame.symbol.cyan())?;
             write!(f, "    at: {}", frame.filename)?;
 
             if let Some(line) = frame.lineno {
@@ -219,9 +218,7 @@ impl StdError for Error {
 /// Provides the same formatting for output as Display but includes the fullstack trace.
 impl Debug for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        // Setup controls for writing out errors
-        let c = Colorized::new();
-        let fullstack = term::var_enabled(WITCHER_FULLSTACK);
+        let fullstack = f.alternate();
 
         // Push all `Error` instances to a vec then reverse
         let mut errors: Vec<&Error> = Vec::new();
@@ -243,17 +240,17 @@ impl Debug for Error {
             let parent: Option<&Error> = if i + 1 < len { Some(errors[i + 1]) } else { None };
 
             // Write out the error wrapper
-            writeln!(f, " error: {}: {}", c.red(ERROR_TYPE), c.red(&err.msg))?;
+            writeln!(f, " error: {}: {}", ERROR_TYPE.red(), err.msg.red())?;
 
             // Write out any std errors in order
             if i == 0 {
                 if let Some(stderr) = (*err).source() {
-                    err.write_std(f, &c, stderr)?;
+                    err.write_std(f, stderr)?;
                 }
             }
 
             // Write out the frames minus those in the wrapping error
-            err.write_frames(f, &c, parent, fullstack)?;
+            err.write_frames(f, parent, fullstack)?;
             if i + 1 < len {
                 writeln!(f)?;
             }
@@ -270,9 +267,8 @@ impl Display for Error {
         }
 
         // Write out more detail
-        let c = Colorized::new();
         let mut buf = String::new();
-        buf += &format!(" error: {}", c.red(&self.msg));
+        buf += &format!(" error: {}", self.msg.red());
 
         // Traverse the whole chain
         let mut source = self.source();
@@ -282,8 +278,8 @@ impl Display for Error {
             }
             buf += &" cause: ".to_string();
             match stderr.downcast_ref::<Error>() {
-                Some(err) => buf += &format!("{}", c.red(&err.msg)),
-                _ => buf += &format!("{}", c.red(stderr)),
+                Some(err) => buf += &format!("{}", err.msg.red()),
+                _ => buf += &format!("{}", stderr.to_string().red()),
             }
             source = stderr.source();
         }
@@ -303,7 +299,7 @@ mod tests {
     static INIT: Once = Once::new();
     pub fn initialize() {
         INIT.call_once(|| {
-            env::set_var(crate::WITCHER_COLOR, "0");
+            env::set_var(gory::TERM_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
         });
     }

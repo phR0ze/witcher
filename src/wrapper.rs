@@ -85,7 +85,7 @@ mod tests {
     static INIT: Once = Once::new();
     pub fn initialize() {
         INIT.call_once(|| {
-            std::env::set_var(crate::WITCHER_COLOR, "0");
+            std::env::set_var(gory::TERM_COLOR, "0");
             std::env::set_var("RUST_BACKTRACE", "0");
         });
     }

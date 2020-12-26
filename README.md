@@ -1,8 +1,9 @@
 WITCHER
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![license-badge](https://img.shields.io/crates/l/fungus.svg)](https://opensource.org/licenses/MIT)
 [![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)](https://github.com/phR0ze/witcher/actions)
 [![codecov](https://codecov.io/gh/phR0ze/witcher/branch/main/graph/badge.svg?token=2GYE6JWAPI)](https://codecov.io/gh/phR0ze/witcher)
 [![crates.io](https://img.shields.io/crates/v/witcher.svg)](https://crates.io/crates/witcher)
+[![rust-version](https://img.shields.io/badge/rust-latest%20stable-blue.svg)](https://github.com/rust-lang/rust/releases)
 ====================================================================================================
 
 Track and put down bugs using simple concise error handling
@@ -36,6 +37,7 @@ simplified backtraces`.
 
 ### Quick links
 * [Usage](#usage)
+  * [Color](#color)
   * [Downcasting](#downcasting)
     * [downcast\_ref](#downcast_ref)
     * [match\_err](#match_err)
@@ -77,10 +79,13 @@ symbols and less typing needed.
 
 1. Ensure your running a modern enough Rust  
    ***Requires Rust >= 1.30*** as witcher depends on [`source`](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
-2. Import witcher in your `Cargo.toml`
+2. Import witcher in your `Cargo.toml` and keep debug symbols
    ```toml
    [dependencies]
    witcher = "0.1"
+
+   [profile.release]
+   debug = true
    ```
 3. Use the witcher prelude
    ```rust
@@ -99,6 +104,15 @@ symbols and less typing needed.
        Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
    }
    ```
+
+## Color <a name="color"/></a>
+Color is automatically controlled by the [gory](https://crates.io/crates/gory) based on `tty`
+detection. You can disable color manually by setting the `TERM_COLOR` environment variable to
+something falsy see [gory docs on controlling use]( https://github.com/phR0ze/gory#control-use).
+
+```bash
+$ TERM_COLOR=0 cargo run -q --example simple
+```
 
 ## Downcasting <a name="downcasting"/></a>
 We can match on error types using downcasting or with the `match_err!` macro.
