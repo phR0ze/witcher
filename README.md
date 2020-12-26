@@ -5,7 +5,7 @@
 [![crates.io](https://img.shields.io/crates/v/witcher.svg)](https://crates.io/crates/witcher)
 [![rust-version](https://img.shields.io/badge/rust-latest%20stable-blue.svg)](https://github.com/rust-lang/rust/releases)
 
-Track and put down bugs using simple concise error handling
+***Track and put down bugs using simple concise error handling***
 
 Avoid terminating execution randomly in your code with `panics` via `unwrap` and `expect` varients,
 or laboriously writing custom enum wrapers, or having to work with `Box` types which is messy;
