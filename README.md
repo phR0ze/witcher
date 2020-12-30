@@ -3,7 +3,7 @@
 [![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)](https://github.com/phR0ze/witcher/actions)
 [![codecov](https://codecov.io/gh/phR0ze/witcher/branch/main/graph/badge.svg?token=2GYE6JWAPI)](https://codecov.io/gh/phR0ze/witcher)
 [![crates.io](https://img.shields.io/crates/v/witcher.svg)](https://crates.io/crates/witcher)
-[![Minimum rustc](https://img.shields.io/badge/rustc-1.30+-lightgray.svg)](https://github.com/phR0ze/witcher#rustc)
+[![Minimum rustc](https://img.shields.io/badge/rustc-1.30+-lightgray.svg)](https://github.com/phR0ze/witcher#rustc-requirements)
 
 ***Track and put down bugs using simple concise error handling***
 
@@ -36,7 +36,7 @@ simplified backtraces`.
 
 ### Quick links
 * [Usage](#usage)
-  * [Rustc](#rustc)
+  * [Rustc requirments](#rustc-requirements)
   * [Color](#color)
   * [Downcasting](#downcasting)
     * [downcast\_ref](#downcast_ref)
@@ -78,10 +78,11 @@ Use the `wrap` extension method on `Result` types to wrap the error with additio
 messaging and automatically chain errors together. `wrap` returns a `Result<T>` so there are fewer
 symbols and less typing needed.
 
-#### rustc requirements <a name="rustc"/></a>
-1. Ensure your running a modern enough Rust  
-   ***Requires Rust >= 1.30*** as witcher depends on [`source`](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
-2. Import witcher in your `Cargo.toml` and keep debug symbols
+#### Requires rustc >= 1.30 <a name="rustc-requirements"/></a>
+This minimum rustc requirement is driven by the enhancemnts made to [Rust's `std::error::Error`
+handling improvements](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
+
+1. Import witcher in your `Cargo.toml` and keep debug symbols
    ```toml
    [dependencies]
    witcher = "0.1"
@@ -89,15 +90,15 @@ symbols and less typing needed.
    [profile.release]
    debug = true
    ```
-3. Use the witcher prelude
+2. Use the witcher prelude
    ```rust
    use witcher::prelude::*;
    ```
-4. Use the `Result<T>` alias as your return type
+3. Use the `Result<T>` alias as your return type
    ```rust
    fn do_something() -> Result<()>;
    ```
-5. Use the `wrap` extension method on Result to provide context
+4. Use the `wrap` extension method on Result to provide context
    ```rust
    fn do_something() -> Result<()> {
        do_external_thing().wrap("Failed to slay beast")
