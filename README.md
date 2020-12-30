@@ -79,7 +79,7 @@ messaging and automatically chain errors together. `wrap` returns a `Result<T>` 
 symbols and less typing needed.
 
 #### Requires rustc >= 1.30 <a name="rustc-requirements"/></a>
-This minimum rustc requirement is driven by the enhancemnts made to [Rust's `std::error::Error`
+This minimum rustc requirement is driven by the enhancements made to [Rust's `std::error::Error`
 handling improvements](https://doc.rust-lang.org/std/error/trait.Error.html#method.source)
 
 1. Import witcher in your `Cargo.toml` and keep debug symbols
