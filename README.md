@@ -3,7 +3,7 @@
 [![build](https://github.com/phR0ze/witcher/workflows/build/badge.svg?branch=main)](https://github.com/phR0ze/witcher/actions)
 [![codecov](https://codecov.io/gh/phR0ze/witcher/branch/main/graph/badge.svg?token=2GYE6JWAPI)](https://codecov.io/gh/phR0ze/witcher)
 [![crates.io](https://img.shields.io/crates/v/witcher.svg)](https://crates.io/crates/witcher)
-[![rust-version](https://img.shields.io/badge/rust-latest%20stable-blue.svg)](https://github.com/rust-lang/rust/releases)
+[![Minimum rustc](https://img.shields.io/badge/rustc-1.30+-lightgray.svg)](https://github.com/phR0ze/witcher#rustc)
 
 ***Track and put down bugs using simple concise error handling***
 
@@ -36,6 +36,7 @@ simplified backtraces`.
 
 ### Quick links
 * [Usage](#usage)
+  * [Rustc](#rustc)
   * [Color](#color)
   * [Downcasting](#downcasting)
     * [downcast\_ref](#downcast_ref)
@@ -55,6 +56,7 @@ simplified backtraces`.
 * [License](#license)
   * [Contribution](#contribution)
 * [Backlog](#backlog)
+* [Changelog](#changelog)
 
 ## Manifesto <a name="manifesto"/></a>
 Coming from a Golang background, most recently, I fully expected to just import the defacto standard
@@ -76,6 +78,7 @@ Use the `wrap` extension method on `Result` types to wrap the error with additio
 messaging and automatically chain errors together. `wrap` returns a `Result<T>` so there are fewer
 symbols and less typing needed.
 
+#### rustc requirements <a name="rustc"/></a>
 1. Ensure your running a modern enough Rust  
    ***Requires Rust >= 1.30*** as witcher depends on [`source`](https://doc.rust-lang.org/std/error/trait.Error.html#method.source) method
 2. Import witcher in your `Cargo.toml` and keep debug symbols
@@ -334,3 +337,7 @@ any additional terms or conditions.
 ## Backlog <a name="backlog"/></a>
 * Add rust doc comments
 * Mechanism for converting to JSON maybe use `{:#?}`
+
+## Changelog <a name="changelog"/></a>
+* 12/30/2020
+  * Corrected the minimum required `rustc` badge
