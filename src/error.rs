@@ -24,10 +24,14 @@ static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 ///
 /// Saftey: data layout ensured to be consistent with repr(C) for raw conversions.
 pub struct Error {
+    // Pass through `Error` doesn't have a valid message.
+    // Use this as a flag to reference the inner error in all places
+    pass: bool,
+
     // Error message which will either be additional context for the inner error
     // or in the case where this error was created from `new` will be the only
-    // error message or in the case where this is a pass through it will be None.
-    msg: Option<String>,
+    // error message or in the case where this is a pass through it will be "".
+    msg: String,
 
     // Type name here will refer to the inner error in the case where
     // inner error is Some and is an external type else it will be `Error`.
@@ -44,7 +48,8 @@ impl Error {
     /// Create a new error instance wrapped in a result
     pub fn raw(msg: &str) -> Self {
         Self {
-            msg: Some(msg.to_string()),
+            pass: false,
+            msg: msg.to_string(),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
@@ -57,7 +62,8 @@ impl Error {
         E: StdError+Send+Sync+'static,
     {
         Self {
-            msg: Some(msg.to_string()),
+            pass: false,
+            msg: msg.to_string(),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
@@ -69,13 +75,14 @@ impl Error {
         Err(Error::raw(msg))
     }
 
-    /// Pass the given error through without a message or backtrace.
+    /// Pass the given error through without a message
     pub fn pass<T, E>(err: E) -> Result<T>
     where
         E: StdError+Send+Sync+'static,
     {
         Err(Self {
-            msg: None,
+            pass: true,
+            msg: String::new(),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
@@ -122,17 +129,20 @@ impl Error {
 
     /// Implemented directly on the `Error` type to reduce casting required
     pub fn is<T: StdError+'static>(&self) -> bool {
-        <dyn StdError+'static>::is::<T>(self)
+        if self.pass && self.inner.is_some() {
+            <dyn StdError+'static>::is::<T>(self.source().unwrap())
+        } else {
+            <dyn StdError+'static>::is::<T>(self)
+        }
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
     pub fn downcast_ref<T: StdError+'static>(&self) -> Option<&T> {
-        <dyn StdError+'static>::downcast_ref::<T>(self)
-    }
-
-    /// Implemented directly on the `Error` type to reduce casting required
-    pub fn downcast_mut<T: StdError+'static>(&mut self) -> Option<&mut T> {
-        <dyn StdError+'static>::downcast_mut::<T>(self)
+        if self.pass && self.inner.is_some() {
+            <dyn StdError+'static>::downcast_ref::<T>(self.source().unwrap())
+        } else {
+            <dyn StdError+'static>::downcast_ref::<T>(self)
+        }
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
@@ -142,12 +152,13 @@ impl Error {
 
     // Get the message or the inner message depending on if a pass was used to construct this `Error`
     fn msg(&self) -> String {
-        match &self.msg {
-            Some(msg) => msg.clone(),
-            None => match self.source() {
+        if self.pass {
+            match self.source() {
                 Some(err) => format!("{}", err),
                 None => String::new(),
-            },
+            }
+        } else {
+            self.msg.clone()
         }
     }
 
@@ -279,9 +290,10 @@ impl Debug for Error {
 
             // Write out any std errors in order
             if i == 0 {
-                if let Some(stderr) = match self.msg {
-                    Some(_) => (*err).source(),
-                    None => (*err).source().and_then(|x| x.source()),
+                if let Some(stderr) = if self.pass {
+                    (*err).source().and_then(|x| x.source())
+                } else {
+                    (*err).source()
                 } {
                     err.write_std(f, stderr)?;
                 }
@@ -309,9 +321,10 @@ impl Display for Error {
         buf += &format!(" error: {}", self.msg().red());
 
         // Traverse the whole chain
-        let mut source = match self.msg {
-            Some(_) => self.source(),
-            None => self.source().and_then(|x| x.source()),
+        let mut source = if self.pass {
+            self.source().and_then(|x| x.source())
+        } else {
+            self.source()
         };
         while let Some(stderr) = source {
             if !buf.ends_with('\n') {
@@ -426,6 +439,5 @@ mod tests {
         initialize();
         assert!(Error::raw("").is::<Error>());
         assert!(Error::raw("").downcast_ref::<Error>().is_some());
-        assert!(Error::raw("").downcast_mut::<Error>().is_some());
     }
 }

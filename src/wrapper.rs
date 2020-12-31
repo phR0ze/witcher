@@ -3,7 +3,7 @@ use std::any::TypeId;
 
 /// Define the `wrap` function for Result types
 pub trait Wrapper<T, E> {
-    /// Pass the error through without any message or backtrace.
+    /// Pass the error through without any message.
     /// This is useful to keep compatibility without having to unwrap the error.
     fn pass(self) -> Result<T>;
 
@@ -131,6 +131,7 @@ mod tests {
     fn test_pass() {
         initialize();
         assert_eq!("Oh no, we missed!", pass().unwrap_err().to_string());
+        assert!(!pass().unwrap_err().is::<Error>());
     }
 
     #[test]
