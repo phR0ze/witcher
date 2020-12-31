@@ -3,6 +3,10 @@ use std::any::TypeId;
 
 /// Define the `wrap` function for Result types
 pub trait Wrapper<T, E> {
+    /// Pass the error through without any message or backtrace.
+    /// This is useful to keep compatibility without having to unwrap the error.
+    fn pass(self) -> Result<T>;
+
     /// Wrap the error providing the ability to add more context
     fn wrap(self, msg: &str) -> Result<T>;
 
@@ -26,6 +30,13 @@ impl<T, E> Wrapper<T, E> for Result<T, E>
 where
     E: StdError+Send+Sync+'static,
 {
+    fn pass(self) -> Result<T> {
+        match self {
+            Err(err) => Error::pass(err),
+            Ok(val) => Ok(val),
+        }
+    }
+
     fn wrap(self, msg: &str) -> Result<T> {
         match self {
             Err(err) => Error::wrap(err, msg),
@@ -90,6 +101,10 @@ mod tests {
         });
     }
 
+    fn pass() -> Result<()> {
+        do_external_thing().pass()
+    }
+
     fn retry() -> Result<()> {
         do_external_thing().retry(3, |_| do_external_thing()).wrap("Failed while attacking beast")
     }
@@ -110,6 +125,12 @@ mod tests {
 
     fn do_external_thing() -> std::io::Result<()> {
         Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
+    }
+
+    #[test]
+    fn test_pass() {
+        initialize();
+        assert_eq!("Oh no, we missed!", pass().unwrap_err().to_string());
     }
 
     #[test]

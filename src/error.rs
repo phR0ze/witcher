@@ -24,13 +24,10 @@ static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 ///
 /// Saftey: data layout ensured to be consistent with repr(C) for raw conversions.
 pub struct Error {
-    // When pass is true ignore Self and pass everything through
-    pass: bool,
-
     // Error message which will either be additional context for the inner error
     // or in the case where this error was created from `new` will be the only
-    // error message.
-    msg: String,
+    // error message or in the case where this is a pass through it will be None.
+    msg: Option<String>,
 
     // Type name here will refer to the inner error in the case where
     // inner error is Some and is an external type else it will be `Error`.
@@ -47,8 +44,7 @@ impl Error {
     /// Create a new error instance wrapped in a result
     pub fn raw(msg: &str) -> Self {
         Self {
-            pass: false,
-            msg: msg.to_string(),
+            msg: Some(msg.to_string()),
             type_name: String::from(ERROR_TYPE),
             backtrace: crate::backtrace::new(),
             inner: None,
@@ -61,8 +57,7 @@ impl Error {
         E: StdError+Send+Sync+'static,
     {
         Self {
-            pass: false,
-            msg: msg.to_string(),
+            msg: Some(msg.to_string()),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),
@@ -72,6 +67,19 @@ impl Error {
     /// Create a new error instance wrapped in a result
     pub fn new<T>(msg: &str) -> Result<T> {
         Err(Error::raw(msg))
+    }
+
+    /// Pass the given error through without a message or backtrace.
+    pub fn pass<T, E>(err: E) -> Result<T>
+    where
+        E: StdError+Send+Sync+'static,
+    {
+        Err(Self {
+            msg: None,
+            type_name: Error::name(&err),
+            backtrace: crate::backtrace::new(),
+            inner: Some(Box::new(err)),
+        })
     }
 
     /// Wrap the given error and include a contextual message for the error.
@@ -132,7 +140,18 @@ impl Error {
         self.as_ref().source()
     }
 
-    /// Extract the name of the given error type and perform some clean up on the type
+    // Get the message or the inner message depending on if a pass was used to construct this `Error`
+    fn msg(&self) -> String {
+        match &self.msg {
+            Some(msg) => msg.clone(),
+            None => match self.source() {
+                Some(err) => format!("{}", err),
+                None => String::new(),
+            },
+        }
+    }
+
+    // Extract the name of the given error type and perform some clean up on the type
     fn name<T>(_: T) -> String {
         let mut name = std::any::type_name::<T>().to_string();
 
@@ -256,11 +275,14 @@ impl Debug for Error {
             };
 
             // Write out the error wrapper
-            writeln!(f, " error: {}: {}", ERROR_TYPE.red(), err.msg.red())?;
+            writeln!(f, " error: {}: {}", ERROR_TYPE.red(), err.msg().red())?;
 
             // Write out any std errors in order
             if i == 0 {
-                if let Some(stderr) = (*err).source() {
+                if let Some(stderr) = match self.msg {
+                    Some(_) => (*err).source(),
+                    None => (*err).source().and_then(|x| x.source()),
+                } {
                     err.write_std(f, stderr)?;
                 }
             }
@@ -279,22 +301,25 @@ impl Debug for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         if !f.alternate() {
-            return write!(f, "{}", self.msg);
+            return write!(f, "{}", self.msg());
         }
 
         // Write out more detail
         let mut buf = String::new();
-        buf += &format!(" error: {}", self.msg.red());
+        buf += &format!(" error: {}", self.msg().red());
 
         // Traverse the whole chain
-        let mut source = self.source();
+        let mut source = match self.msg {
+            Some(_) => self.source(),
+            None => self.source().and_then(|x| x.source()),
+        };
         while let Some(stderr) = source {
             if !buf.ends_with('\n') {
                 buf += &"\n";
             }
             buf += &" cause: ".to_string();
             match stderr.downcast_ref::<Error>() {
-                Some(err) => buf += &format!("{}", err.msg.red()),
+                Some(err) => buf += &format!("{}", err.msg().red()),
                 _ => buf += &format!("{}", stderr.to_string().red()),
             }
             source = stderr.source();
@@ -344,6 +369,7 @@ mod tests {
         }
     }
 
+    // Test alte
     #[test]
     fn test_output_levels() {
         initialize();
@@ -352,7 +378,7 @@ mod tests {
         assert_eq!("wrapped", format!("{}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
 
         // Test alternate standard output
-        assert_eq!("error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
+        assert_eq!(" error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
 
         let err = Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped");
         assert_eq!(" error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n", format!("{:?}", err).split("symbol").next().unwrap());
