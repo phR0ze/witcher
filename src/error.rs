@@ -1,8 +1,9 @@
-use crate::backtrace::Frame;
-use crate::{Result, StdError};
+use crate::{backtrace::Frame, Result, StdError};
 use gory::*;
-use std::convert::From;
-use std::fmt::{self, Debug, Display, Formatter};
+use std::{
+    convert::From,
+    fmt::{self, Debug, Display, Formatter},
+};
 
 static ERROR_TYPE: &str = "witcher::Error";
 static STDERROR_TYPE: &str = "std::error::Error";
@@ -22,7 +23,11 @@ static LONG_ERROR_TYPE: &str = "witcher::error::Error";
 /// allowing you to focus on your code.
 ///
 /// Saftey: data layout ensured to be consistent with repr(C) for raw conversions.
-pub struct Error {
+pub struct Error
+{
+    // When pass is true ignore Self and pass everything through
+    pass: bool,
+
     // Error message which will either be additional context for the inner error
     // or in the case where this error was created from `new` will be the only
     // error message.
@@ -37,35 +42,46 @@ pub struct Error {
 
     // The original error in the case where we're wrapping an external error or
     // an `Error` in the case where we're wrapping another `Error`.
-    inner: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    inner: Option<Box<dyn StdError+Send+Sync+'static>>,
 }
-impl Error {
+impl Error
+{
     /// Create a new error instance wrapped in a result
-    ///
-    pub fn raw(msg: &str) -> Self {
-        Self { msg: msg.to_string(), type_name: String::from(ERROR_TYPE), backtrace: crate::backtrace::new(), inner: None }
+    pub fn raw(msg: &str) -> Self
+    {
+        Self {
+            pass: false,
+            msg: msg.to_string(),
+            type_name: String::from(ERROR_TYPE),
+            backtrace: crate::backtrace::new(),
+            inner: None,
+        }
     }
 
     /// Wrap the given error and include a contextual message for the error.
-    ///
     pub fn wrapr<E>(err: E, msg: &str) -> Self
     where
-        E: StdError + Send + Sync + 'static,
+        E: StdError+Send+Sync+'static,
     {
-        Self { msg: msg.to_string(), type_name: Error::name(&err), backtrace: crate::backtrace::new(), inner: Some(Box::new(err)) }
+        Self {
+            pass: false,
+            msg: msg.to_string(),
+            type_name: Error::name(&err),
+            backtrace: crate::backtrace::new(),
+            inner: Some(Box::new(err)),
+        }
     }
 
     /// Create a new error instance wrapped in a result
-    ///
-    pub fn new<T>(msg: &str) -> Result<T> {
+    pub fn new<T>(msg: &str) -> Result<T>
+    {
         Err(Error::raw(msg))
     }
 
     /// Wrap the given error and include a contextual message for the error.
-    ///
     pub fn wrap<T, E>(err: E, msg: &str) -> Result<T>
     where
-        E: StdError + Send + Sync + 'static,
+        E: StdError+Send+Sync+'static,
     {
         Err(Error::wrapr(err, msg))
     }
@@ -74,8 +90,9 @@ impl Error {
     /// The intent is that when writing application code there are cases where your more
     /// interested in reacting to an external failure.
     /// If there is no external error then you'll get the last `Error` in the chain.
-    pub fn ext(&self) -> &(dyn StdError + 'static) {
-        let mut stderr: &(dyn StdError + 'static) = self;
+    pub fn ext(&self) -> &(dyn StdError+'static)
+    {
+        let mut stderr: &(dyn StdError+'static) = self;
         let mut source = self.source();
         while let Some(err) = source {
             stderr = err;
@@ -90,8 +107,9 @@ impl Error {
     /// Return the last of the error chain for downcasting.
     /// This will follow the chain of source errors down to the last and return it.
     /// If this error is the only error it will be returned instead.
-    pub fn last(&self) -> &(dyn StdError + 'static) {
-        let mut err: &(dyn StdError + 'static) = self;
+    pub fn last(&self) -> &(dyn StdError+'static)
+    {
+        let mut err: &(dyn StdError+'static) = self;
         let mut source = self.source();
         while let Some(e) = source {
             err = e;
@@ -101,27 +119,32 @@ impl Error {
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
-    pub fn is<T: StdError + 'static>(&self) -> bool {
-        <dyn StdError + 'static>::is::<T>(self)
+    pub fn is<T: StdError+'static>(&self) -> bool
+    {
+        <dyn StdError+'static>::is::<T>(self)
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
-    pub fn downcast_ref<T: StdError + 'static>(&self) -> Option<&T> {
-        <dyn StdError + 'static>::downcast_ref::<T>(self)
+    pub fn downcast_ref<T: StdError+'static>(&self) -> Option<&T>
+    {
+        <dyn StdError+'static>::downcast_ref::<T>(self)
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
-    pub fn downcast_mut<T: StdError + 'static>(&mut self) -> Option<&mut T> {
-        <dyn StdError + 'static>::downcast_mut::<T>(self)
+    pub fn downcast_mut<T: StdError+'static>(&mut self) -> Option<&mut T>
+    {
+        <dyn StdError+'static>::downcast_mut::<T>(self)
     }
 
     /// Implemented directly on the `Error` type to reduce casting required
-    pub fn source(&self) -> Option<&(dyn StdError + 'static)> {
+    pub fn source(&self) -> Option<&(dyn StdError+'static)>
+    {
         self.as_ref().source()
     }
 
     /// Extract the name of the given error type and perform some clean up on the type
-    fn name<T>(_: T) -> String {
+    fn name<T>(_: T) -> String
+    {
         let mut name = std::any::type_name::<T>().to_string();
 
         // Strip off prefixes
@@ -145,7 +168,8 @@ impl Error {
     }
 
     // Write out external errors
-    fn write_std(&self, f: &mut Formatter<'_>, stderr: &dyn StdError) -> fmt::Result {
+    fn write_std(&self, f: &mut Formatter<'_>, stderr: &dyn StdError) -> fmt::Result
+    {
         let mut buf = format!(" cause: {}: {}", self.type_name.red(), stderr.to_string().red());
         let mut source = stderr.source();
         while let Some(inner) = source {
@@ -161,7 +185,8 @@ impl Error {
         write!(f, "{}", buf)
     }
 
-    fn write_frames(&self, f: &mut Formatter<'_>, parent: Option<&Error>, fullstack: bool) -> fmt::Result {
+    fn write_frames(&self, f: &mut Formatter<'_>, parent: Option<&Error>, fullstack: bool) -> fmt::Result
+    {
         let frames: Vec<&Frame> = if !fullstack {
             let frames: Vec<&Frame> = self.backtrace.iter().filter(|x| !x.is_dependency()).collect();
             match parent {
@@ -169,7 +194,7 @@ impl Error {
                     let len = frames.len();
                     let plen = parent.backtrace.iter().filter(|x| !x.is_dependency()).count();
                     frames.into_iter().take(len - plen).collect::<Vec<&Frame>>()
-                }
+                },
                 _ => frames,
             }
 
@@ -200,14 +225,18 @@ impl Error {
 // External trait implementations
 // -------------------------------------------------------------------------------------------------
 
-impl AsRef<dyn StdError> for Error {
-    fn as_ref(&self) -> &(dyn StdError + 'static) {
+impl AsRef<dyn StdError> for Error
+{
+    fn as_ref(&self) -> &(dyn StdError+'static)
+    {
         self
     }
 }
 
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+impl StdError for Error
+{
+    fn source(&self) -> Option<&(dyn StdError+'static)>
+    {
         match &self.inner {
             Some(x) => Some(&**x),
             None => None,
@@ -216,8 +245,10 @@ impl StdError for Error {
 }
 
 /// Provides the same formatting for output as Display but includes the fullstack trace.
-impl Debug for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl Debug for Error
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result
+    {
         let fullstack = f.alternate();
 
         // Push all `Error` instances to a vec then reverse
@@ -260,8 +291,10 @@ impl Debug for Error {
 }
 
 /// Provides formatting for output with frames filtered to just target code
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl Display for Error
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result
+    {
         if !f.alternate() {
             return write!(f, "{}", self.msg);
         }
@@ -290,37 +323,46 @@ impl Display for Error {
 // Unit tests
 // -------------------------------------------------------------------------------------------------
 #[cfg(test)]
-mod tests {
+mod tests
+{
     use super::*;
     use std::env;
 
     // Disable backtrace and colors
     use std::sync::Once;
     static INIT: Once = Once::new();
-    pub fn initialize() {
+    pub fn initialize()
+    {
         INIT.call_once(|| {
             env::set_var(gory::TERM_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
         });
     }
 
-    struct TestError {
+    struct TestError
+    {
         msg: String,
         inner: Option<Box<TestError>>,
     }
     #[cfg(not(tarpaulin_include))]
-    impl Debug for TestError {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    impl Debug for TestError
+    {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result
+        {
             write!(f, "{}", self.msg)
         }
     }
-    impl Display for TestError {
-        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    impl Display for TestError
+    {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result
+        {
             write!(f, "{}", self.msg)
         }
     }
-    impl StdError for TestError {
-        fn source(&self) -> Option<&(dyn StdError + 'static)> {
+    impl StdError for TestError
+    {
+        fn source(&self) -> Option<&(dyn StdError+'static)>
+        {
             match &self.inner {
                 Some(x) => Some(x as &dyn StdError),
                 None => None,
@@ -329,22 +371,59 @@ mod tests {
     }
 
     #[test]
-    fn test_output_levels() {
+    fn test_output_levels()
+    {
         initialize();
 
         // Test standard output
-        assert_eq!("wrapped", format!("{}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
+        assert_eq!(
+            "wrapped",
+            format!(
+                "{}",
+                Error::wrapr(
+                    TestError {
+                        msg: "cause".to_string(),
+                        inner: None
+                    },
+                    "wrapped"
+                )
+            )
+        );
 
         // Test alternate standard output
-        assert_eq!(" error: wrapped\n cause: cause", format!("{:#}", Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped")));
+        assert_eq!(
+            " error: wrapped\n cause: cause",
+            format!(
+                "{:#}",
+                Error::wrapr(
+                    TestError {
+                        msg: "cause".to_string(),
+                        inner: None
+                    },
+                    "wrapped"
+                )
+            )
+        );
 
-        let err = Error::wrapr(TestError { msg: "cause".to_string(), inner: None }, "wrapped");
+        let err = Error::wrapr(
+            TestError {
+                msg: "cause".to_string(),
+                inner: None,
+            },
+            "wrapped",
+        );
         assert_eq!(
             " error: witcher::Error: wrapped\n cause: witcher::error::tests::TestError: cause\n",
             format!("{:?}", err).split("symbol").next().unwrap()
         );
         let err = Error::wrapr(
-            TestError { msg: "cause".to_string(), inner: Some(Box::new(TestError { msg: "cause2".to_string(), inner: None })) },
+            TestError {
+                msg: "cause".to_string(),
+                inner: Some(Box::new(TestError {
+                    msg: "cause2".to_string(),
+                    inner: None,
+                })),
+            },
             "wrapped",
         );
         assert_eq!(
@@ -354,36 +433,69 @@ mod tests {
     }
 
     #[test]
-    fn test_chained_cause() {
+    fn test_chained_cause()
+    {
         initialize();
         let err = TestError {
             msg: "cause 1".to_string(),
             inner: Some(Box::new(TestError {
                 msg: "cause 2".to_string(),
-                inner: Some(Box::new(TestError { msg: "cause 3".to_string(), inner: None })),
+                inner: Some(Box::new(TestError {
+                    msg: "cause 3".to_string(),
+                    inner: None,
+                })),
             })),
         };
 
-        assert_eq!(" error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3", format!("{:#}", Error::wrapr(err, "wrapped")));
+        assert_eq!(
+            " error: wrapped\n cause: cause 1\n cause: cause 2\n cause: cause 3",
+            format!("{:#}", Error::wrapr(err, "wrapped"))
+        );
     }
 
     #[test]
-    fn test_ext_and_last() {
+    fn test_ext_and_last()
+    {
         initialize();
         let err = TestError {
             msg: "cause 1".to_string(),
             inner: Some(Box::new(TestError {
                 msg: "cause 2".to_string(),
-                inner: Some(Box::new(TestError { msg: "cause 3".to_string(), inner: None })),
+                inner: Some(Box::new(TestError {
+                    msg: "cause 3".to_string(),
+                    inner: None,
+                })),
             })),
         };
-        assert_eq!("foo", Error::wrapr(TestError { msg: "cause 1".to_string(), inner: None }, "foo").to_string());
-        assert_eq!("cause 1", Error::wrapr(TestError { msg: "cause 1".to_string(), inner: None }, "foo").ext().to_string());
+        assert_eq!(
+            "foo",
+            Error::wrapr(
+                TestError {
+                    msg: "cause 1".to_string(),
+                    inner: None
+                },
+                "foo"
+            )
+            .to_string()
+        );
+        assert_eq!(
+            "cause 1",
+            Error::wrapr(
+                TestError {
+                    msg: "cause 1".to_string(),
+                    inner: None
+                },
+                "foo"
+            )
+            .ext()
+            .to_string()
+        );
         assert_eq!("cause 3", Error::wrapr(err, "foo").last().to_string());
     }
 
     #[test]
-    fn test_assist_methods() {
+    fn test_assist_methods()
+    {
         initialize();
         assert!(Error::raw("").is::<Error>());
         assert!(Error::raw("").downcast_ref::<Error>().is_some());

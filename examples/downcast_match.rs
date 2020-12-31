@@ -1,14 +1,17 @@
 use witcher::prelude::*;
 
-fn do_something() -> Result<()> {
+fn do_something() -> Result<()>
+{
     do_external_thing().wrap("Failed to slay beast")
 }
 
-fn do_external_thing() -> std::io::Result<()> {
+fn do_external_thing() -> std::io::Result<()>
+{
     Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
 }
 
-fn main() {
+fn main()
+{
     let err = do_something().unwrap_err();
 
     // Match multiple downcasted cases to handle errors differently

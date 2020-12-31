@@ -1,5 +1,8 @@
 # https://rust-lang.github.io/rustfmt/
 # https://github.com/rust-lang/rustfmt/blob/master/src/config/options.rs
+# Check proper rustfmt.toml syntax
+#
+# rustfmt --check src/<file>
 
 # Maximum width of an array literal before falling back to vertical formatting.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#array_width
@@ -165,7 +168,7 @@ fn_call_width = 100
 # Default value: false
 # Possible values: true, false
 # Stable: No (tracking issue: #3358)
-fn_single_line = true
+fn_single_line = false
 
 # Always print the abi for extern items
 # https://rust-lang.github.io/rustfmt/?version=master&search=#force_explicit_abi
@@ -226,6 +229,14 @@ format_macro_bodies = true
 # Possible values: true, false
 # Stable: No (tracking issue: #3353)
 format_strings = false
+
+# Controls the strategy for how imports are grouped together.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#group_imports
+#
+# Default value: "Preserve"
+# Possible values: Preserve, StdExternalCrate
+# Stable: No
+group_imports = "Preserve"
 
 # Use tab characters for indentation, spaces for alignment
 # https://rust-lang.github.io/rustfmt/?version=master&search=#hard_tabs
@@ -329,7 +340,7 @@ match_block_trailing_comma = true
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-max_width = 100
+max_width = 110
 
 # Merge multiple derives into a single one.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#merge_derives
@@ -434,14 +445,6 @@ reorder_impl_items = true
 # Stable: Yes
 reorder_imports = true
 
-# Controls the strategy for how imports are grouped together.
-# https://rust-lang.github.io/rustfmt/?version=master&search=#group_imports
-# 
-# Default value: "Preserve"
-# Possible values: Preserve, StdExternalCrate
-# Stable: No
-group_imports = "Preserve"
-
 # Reorder mod declarations alphabetically in group.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#reorder_modules
 # 
@@ -456,7 +459,7 @@ reorder_modules = true
 # Default value: "CARGO_PKG_VERSION"
 # Possible values: any published version (e.g. "0.3.8")
 # Stable: No (tracking issue: #3386)
-required_version = "CARGO_PKG_VERSION"
+# required_version = "CARGO_PKG_VERSION"
 
 # Leave a space after the colon.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#space_after_colon
@@ -464,9 +467,7 @@ required_version = "CARGO_PKG_VERSION"
 # Default value: true
 # Possible values: true, false
 # Stable: No (tracking issue: #3366)
-#
-# Changed: keeps things more uniform
-space_after_colon = false
+space_after_colon = true
 
 # Leave a space before the colon.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#space_before_colon
@@ -528,7 +529,9 @@ struct_lit_single_line = true
 # Changed: more readable
 struct_lit_width = 20
 
-# Maximum width in the body of a struct variant before falling back to vertical formatting. A value of 0 (zero) results in struct literals always being broken into multiple lines. Note this occurs when width_heuristics is set to Off.
+# Maximum width in the body of a struct variant before falling back to vertical formatting.
+# A value of 0 (zero) results in struct literals always being broken into multiple lines.
+# Note this occurs when width_heuristics is set to Off.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#struct_variant_width
 # 
 # Default value: 35 percent of `max_width` provided by `width_heuristics`

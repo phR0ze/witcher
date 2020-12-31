@@ -1,21 +1,25 @@
 use witcher::prelude::*;
 
 // Wrap an error with additional context
-fn do_something() -> Result<()> {
+fn do_something() -> Result<()>
+{
     do_another_thing().wrap("Failed to slay beast")
 }
 
 // Wrap an external error with additional context
-fn do_another_thing() -> Result<()> {
+fn do_another_thing() -> Result<()>
+{
     do_final_thing().wrap("Failed during sword swing")
 }
 
 // Create an external error to wrap
-fn do_final_thing() -> std::io::Result<()> {
+fn do_final_thing() -> std::io::Result<()>
+{
     Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
 }
 
-fn main() {
+fn main()
+{
     let args: Vec<String> = std::env::args().collect();
     match args.get(1) {
         Some(arg) => match arg.as_str() {

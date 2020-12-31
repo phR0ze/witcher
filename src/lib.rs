@@ -3,11 +3,10 @@ mod error;
 mod wrapper;
 use std::error::Error as StdError;
 
-pub use crate::error::Error;
-pub use crate::wrapper::Wrapper;
+pub use crate::{error::Error, wrapper::Wrapper};
 
 /// `Result<T>` is a simplified return type to use throughout your application.
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub type Result<T, E=Error> = std::result::Result<T, E>;
 
 /// Import all essential symbols in a simple consumable way
 ///
@@ -15,14 +14,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// ```
 /// use witcher::prelude::*;
 /// ```
-pub mod prelude {
-    pub use super::bail;
-    pub use super::err;
-    pub use super::match_err;
-    pub use super::wrap;
-    pub use super::Error;
-    pub use super::Result;
-    pub use super::Wrapper;
+pub mod prelude
+{
+    pub use super::{bail, err, match_err, wrap, Error, Result, Wrapper};
     pub use std::any::TypeId;
 }
 
@@ -126,14 +120,16 @@ macro_rules! match_err {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests
+{
     use super::*;
     use std::{env, fmt, io};
 
     // Disable backtrace and colors
     use std::sync::Once;
     static INIT: Once = Once::new();
-    pub fn initialize() {
+    pub fn initialize()
+    {
         INIT.call_once(|| {
             env::set_var(gory::TERM_COLOR, "0");
             env::set_var("RUST_BACKTRACE", "0");
@@ -143,8 +139,10 @@ mod tests {
     #[derive(Debug)]
     struct TestError1(String);
     impl std::error::Error for TestError1 {}
-    impl fmt::Display for TestError1 {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    impl fmt::Display for TestError1
+    {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+        {
             write!(f, "{}", self.0)
         }
     }
@@ -152,53 +150,66 @@ mod tests {
     #[derive(Debug)]
     struct TestError2(String);
     impl std::error::Error for TestError2 {}
-    impl fmt::Display for TestError2 {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    impl fmt::Display for TestError2
+    {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+        {
             write!(f, "{}", self.0)
         }
     }
 
-    fn bail_simple() -> Result<()> {
+    fn bail_simple() -> Result<()>
+    {
         bail!("oh no!");
     }
 
-    fn bail_formatted() -> Result<()> {
+    fn bail_formatted() -> Result<()>
+    {
         bail!("foo: {}", "oh no!");
     }
 
-    fn wrap_simple() -> Result<()> {
+    fn wrap_simple() -> Result<()>
+    {
         wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "simple_wrap");
     }
 
-    fn wrap_formatted() -> Result<()> {
+    fn wrap_formatted() -> Result<()>
+    {
         wrap!(io::Error::new(io::ErrorKind::NotFound, "oh no!"), "foo: {}", "simple_wrap");
     }
 
     #[test]
-    fn test_bail() {
+    fn test_bail()
+    {
         initialize();
         assert_eq!("oh no!", bail_simple().unwrap_err().to_string());
         assert_eq!("foo: oh no!", bail_formatted().unwrap_err().to_string());
     }
 
     #[test]
-    fn test_err() {
+    fn test_err()
+    {
         initialize();
         assert_eq!("oh no!", err!("oh no!").to_string());
         assert_eq!("foo: oh no!", err!("foo: {}", "oh no!").to_string());
     }
 
     #[test]
-    fn test_wrap() {
+    fn test_wrap()
+    {
         initialize();
         assert_eq!("simple_wrap", format!("{}", wrap_simple().unwrap_err()));
         assert_eq!(" error: simple_wrap\n cause: oh no!", format!("{:#}", wrap_simple().unwrap_err()));
         assert_eq!("foo: simple_wrap", wrap_formatted().unwrap_err().to_string());
-        assert_eq!(" error: foo: simple_wrap\n cause: oh no!", format!("{:#}", wrap_formatted().unwrap_err()));
+        assert_eq!(
+            " error: foo: simple_wrap\n cause: oh no!",
+            format!("{:#}", wrap_formatted().unwrap_err())
+        );
     }
 
     #[test]
-    fn test_single() {
+    fn test_single()
+    {
         initialize();
         let err = io::Error::new(std::io::ErrorKind::Other, "oh no!");
         let res = match_err!(&err, {
@@ -209,7 +220,8 @@ mod tests {
     }
 
     #[test]
-    fn test_match_err() {
+    fn test_match_err()
+    {
         initialize();
         let errors: Vec<Box<dyn std::error::Error>> = vec![
             Box::new(TestError1("test1".to_string())),
@@ -219,7 +231,7 @@ mod tests {
 
         let mut buf = String::new();
         for boxed in errors.iter() {
-            let err: &(dyn StdError + 'static) = &**boxed;
+            let err: &(dyn StdError+'static) = &**boxed;
             buf += &match_err!(err, {
                 x: io::Error => format!("io::Error: {}\n", x),
                 x: TestError1 => format!("TestError1: {}\n", x),
