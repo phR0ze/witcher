@@ -54,9 +54,7 @@ blank_lines_upper_bound = 1
 # Default value: "SameLineWhere"
 # Possible values: "AlwaysNextLine", "PreferSameLine", "SameLineWhere"
 # Stable: No (tracking issue: #3376)
-#
-# Changed: improves readability
-brace_style = "AlwaysNextLine"
+brace_style = "SameLineWhere"
 
 # Maximum width of a chain to fit on one line.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#chain_width
@@ -66,7 +64,7 @@ brace_style = "AlwaysNextLine"
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-chain_width = 100
+chain_width = 150
 
 # Combine control expressions with function calls.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#combine_control_expr
@@ -340,7 +338,7 @@ match_block_trailing_comma = true
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-max_width = 200
+max_width = 250
 
 # Merge multiple derives into a single one.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#merge_derives

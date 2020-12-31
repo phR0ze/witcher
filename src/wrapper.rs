@@ -2,8 +2,7 @@ use crate::{Error, Result, StdError};
 use std::any::TypeId;
 
 /// Define the `wrap` function for Result types
-pub trait Wrapper<T, E>
-{
+pub trait Wrapper<T, E> {
     /// Wrap the error providing the ability to add more context
     fn wrap(self, msg: &str) -> Result<T>;
 
@@ -27,8 +26,7 @@ impl<T, E> Wrapper<T, E> for Result<T, E>
 where
     E: StdError+Send+Sync+'static,
 {
-    fn wrap(self, msg: &str) -> Result<T>
-    {
+    fn wrap(self, msg: &str) -> Result<T> {
         match self {
             Err(err) => Error::wrap(err, msg),
             Ok(val) => Ok(val),
@@ -80,27 +78,23 @@ where
 // Unit tests
 // -------------------------------------------------------------------------------------------------
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use super::*;
 
     use std::sync::Once;
     static INIT: Once = Once::new();
-    pub fn initialize()
-    {
+    pub fn initialize() {
         INIT.call_once(|| {
             std::env::set_var(gory::TERM_COLOR, "0");
             std::env::set_var("RUST_BACKTRACE", "0");
         });
     }
 
-    fn retry() -> Result<()>
-    {
+    fn retry() -> Result<()> {
         do_external_thing().retry(3, |_| do_external_thing()).wrap("Failed while attacking beast")
     }
 
-    fn retry_on_concreate_error_type_using_err_is() -> Result<()>
-    {
+    fn retry_on_concreate_error_type_using_err_is() -> Result<()> {
         let mut retries = 0;
         let mut result = do_external_thing();
         while retries < 3 && result.err_is::<std::io::Error>() {
@@ -110,21 +104,16 @@ mod tests
         result.wrap(&format!("Failed while attacking beast: {}", retries))
     }
 
-    fn retry_on_concreate_error_type() -> Result<()>
-    {
-        do_external_thing()
-            .retry_on(3, TypeId::of::<std::io::Error>(), |_| do_external_thing())
-            .wrap("Failed while attacking beast")
+    fn retry_on_concreate_error_type() -> Result<()> {
+        do_external_thing().retry_on(3, TypeId::of::<std::io::Error>(), |_| do_external_thing()).wrap("Failed while attacking beast")
     }
 
-    fn do_external_thing() -> std::io::Result<()>
-    {
+    fn do_external_thing() -> std::io::Result<()> {
         Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))
     }
 
     #[test]
-    fn test_retry_on()
-    {
+    fn test_retry_on() {
         initialize();
         assert_eq!("Failed while attacking beast", retry().unwrap_err().to_string());
         assert_eq!("Failed while attacking beast", retry_on_concreate_error_type().unwrap_err().to_string());

@@ -1,47 +1,37 @@
 use witcher::prelude::*;
 #[derive(Debug)]
-struct SuperError
-{
+struct SuperError {
     side: SuperErrorSideKick,
 }
-impl std::fmt::Display for SuperError
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-    {
+impl std::fmt::Display for SuperError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SuperError is here!")
     }
 }
-impl std::error::Error for SuperError
-{
-    fn source(&self) -> Option<&(dyn std::error::Error+'static)>
-    {
+impl std::error::Error for SuperError {
+    fn source(&self) -> Option<&(dyn std::error::Error+'static)> {
         Some(&self.side)
     }
 }
 
 #[derive(Debug)]
 struct SuperErrorSideKick;
-impl std::fmt::Display for SuperErrorSideKick
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-    {
+impl std::fmt::Display for SuperErrorSideKick {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SuperErrorSideKick is here!")
     }
 }
 impl std::error::Error for SuperErrorSideKick {}
 
-fn do_something() -> Result<()>
-{
+fn do_something() -> Result<()> {
     do_external_thing().wrap("Failed doing super hero work")
 }
 
-fn do_external_thing() -> std::result::Result<(), SuperError>
-{
+fn do_external_thing() -> std::result::Result<(), SuperError> {
     Err(SuperError { side: SuperErrorSideKick })
 }
 
-fn main()
-{
+fn main() {
     if let Err(err) = do_something() {
         // Traverse the error chain
         let mut source = Some(err.as_ref());

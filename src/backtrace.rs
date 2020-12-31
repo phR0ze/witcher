@@ -34,8 +34,7 @@ const DEPENDENCY_SYM_PREFIXES: &[&str] = &[
 const DEPENDENCY_SYM_CONTAINS: &[&str] = &["as witcher::wrapper::Wrapper"];
 
 // Process the given backtrace return a simplified Frame collection
-pub(crate) fn new() -> Vec<Frame>
-{
+pub(crate) fn new() -> Vec<Frame> {
     let bt = backtrace::Backtrace::new();
 
     bt.frames()
@@ -55,18 +54,15 @@ pub(crate) fn new() -> Vec<Frame>
 
 // Provide a convenient way to work with frame information
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct Frame
-{
+pub(crate) struct Frame {
     pub symbol: String,      // name of the symbol or '<unknown>'
     pub filename: String,    // filename the symbole occurred in
     pub lineno: Option<u32>, // line number the symbol occurred on
     pub column: Option<u32>, // column number the symbol occurred on
 }
-impl Frame
-{
+impl Frame {
     // Check if this is a known rust dependency
-    pub fn is_dependency(&self) -> bool
-    {
+    pub fn is_dependency(&self) -> bool {
         if DEPENDENCY_SYM_PREFIXES.iter().any(|x| self.symbol.starts_with(x))
             || DEPENDENCY_SYM_CONTAINS.iter().any(|x| self.symbol.contains(x))
             || DEPENDENCY_FILE_PREFIXES.iter().any(|x| self.filename.starts_with(x))
@@ -79,8 +75,7 @@ impl Frame
 }
 
 // Write out a shortened simplified path if possible
-fn simple_path(filename: Option<&Path>) -> String
-{
+fn simple_path(filename: Option<&Path>) -> String {
     let mut f = String::new();
     if let Some(file) = filename {
         // Strip off the current working directory to simplify the path
@@ -100,25 +95,21 @@ fn simple_path(filename: Option<&Path>) -> String
 
 // Helper to suppress unwanted result checks
 // -------------------------------------------------------------------------------------------------
-trait Omit
-{
+trait Omit {
     fn omit(&self);
 }
-impl Omit for std::fmt::Result
-{
+impl Omit for std::fmt::Result {
     fn omit(&self) {}
 }
 
 // Unit tests
 // -------------------------------------------------------------------------------------------------
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use super::*;
 
     #[test]
-    fn test_frame_equality()
-    {
+    fn test_frame_equality() {
         let mut frame1 = Frame {
             symbol: String::from("symbol"),
             filename: String::from("filename"),
@@ -142,8 +133,7 @@ mod tests
     }
 
     #[test]
-    fn test_simple_path()
-    {
+    fn test_simple_path() {
         let cwd = std::env::current_dir().unwrap();
         assert_eq!("foo", simple_path(Some(Path::new(&cwd).join("foo").as_ref())));
         assert_eq!("foobar", simple_path(Some(Path::new(&cwd).join("foobar").as_ref())));
@@ -152,8 +142,7 @@ mod tests
     }
 
     #[test]
-    fn test_omit()
-    {
+    fn test_omit() {
         let mut w = String::new();
         write!(&mut w, "foobar").omit();
     }
