@@ -4,19 +4,22 @@
 # Maximum width of an array literal before falling back to vertical formatting.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#array_width
 #
-# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Default value: 60 percent of `max_width` provided by `width_heuristics`
 # Possible values: any positive integer that is less than or equal to the value specified for `max_width`
 # Stable: Yes
 #
-# array_width = 60                        
+# Changed: modern monitors have more horizontal width than they used to
+array_width = 60                        
 
 # Maximum width of the args of a function-like attributes before falling back to vertical formatting.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#attr_fn_like_width
 #
-# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Default value: 70 percent of `max_width` provided by `width_heuristics`
 # Possible values: any positive integer that is less than or equal to the value specified for max_width
 # Stable: Yes
-# attr_fn_like_width = 70
+#
+# Changed: modern monitors have more horizontal width than they used to
+attr_fn_like_width = 70
 
 # Where to put a binary operator when a binary expression goes multiline.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#binop_separator
@@ -48,15 +51,19 @@ blank_lines_upper_bound = 1
 # Default value: "SameLineWhere"
 # Possible values: "AlwaysNextLine", "PreferSameLine", "SameLineWhere"
 # Stable: No (tracking issue: #3376)
+#
+# Changed: improves readability
 brace_style = "AlwaysNextLine"
 
 # Maximum width of a chain to fit on one line.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#chain_width
 #
-# Default value: is a percentage of `max_width` provided by `width_heuristics`
+# Default value: 60 percent of `max_width` provided by `width_heuristics`
 # Possible values: any positive integer that is less than or equal to the value specified for max_width
 # Stable: Yes
-chain_width = 80
+#
+# Changed: modern monitors have more horizontal width than they used to
+chain_width = 100
 
 # Combine control expressions with function calls.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#combine_control_expr
@@ -72,6 +79,8 @@ combine_control_expr = true
 # Default value: 80
 # Possible values: any positive integer
 # Stable: No (tracking issue: #3349)
+#
+# Changed: modern monitors have more horizontal width than they used to
 comment_width = 100
 
 # Replace strings of _ wildcards by a single .. in tuple patterns
@@ -80,7 +89,6 @@ comment_width = 100
 # Possible values: true, false
 # Stable: No (tracking issue: #3384)
 condense_wildcard_suffixes = true
-
 
 # Brace style for control flow constructs
 # https://rust-lang.github.io/rustfmt/?version=master&search=#control_brace_style
@@ -137,15 +145,19 @@ error_on_unformatted = false
 # Default value: "Tall"
 # Possible values: "Compressed", "Tall", "Vertical"
 # Stable: Yes
+#
+# Changed: modern monitors have more horizontal width than they used to
 fn_params_layout = "Compressed"
 
 # Maximum width of the args of a function call before falling back to vertical formatting.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#fn_call_width
 #
-# Default value: a percentage of `max_width` provided by `width_heuristics`
+# Default value: 60 percent of `max_width` provided by `width_heuristics`
 # Possible values: any positive integer that is less than or equal to the value specified for max_width
 # Stable: Yes
-#fn_call_width = 60
+#
+# Changed: modern monitors have more horizontal width than they used to
+fn_call_width = 100
 
 # Put single-expression functions on a single line
 # https://rust-lang.github.io/rustfmt/?version=master&search=#fn_single_line
@@ -155,6 +167,14 @@ fn_params_layout = "Compressed"
 # Stable: No (tracking issue: #3358)
 fn_single_line = true
 
+# Always print the abi for extern items
+# https://rust-lang.github.io/rustfmt/?version=master&search=#force_explicit_abi
+#
+# Default value: true
+# Possible values: true, false
+# Stable: Yes
+# Note: Non-"C" ABIs are always printed. If false then "C" is removed.
+force_explicit_abi = true
 
 # Force multiline closure and match arm bodies to be wrapped in a block
 # https://rust-lang.github.io/rustfmt/?version=master&search=#force_multiline_blocks
@@ -164,38 +184,447 @@ fn_single_line = true
 # Stable: No (tracking issue: #3374)
 force_multiline_blocks = false
 
-# TDB the rest
-format_macro_matchers = false           # Format the metavariable matching patterns in macros.
-format_macro_bodies = false             # Format the bodies of macros.
-format_strings = false                  # Format string literals where necessary
-hard_tabs = false                       # Use tab characters for indentation, spaces for alignment
-imports_indent = "Visual"               # Indent style of imports
-imports_layout = "Mixed"                # Item layout inside a imports block
-indent_style = "Visual"                 # Indent on expressions or items.
-inline_attribute_width = 100            # Write an item and its attribute on the same line if their combined width is below a threshold
-match_arm_blocks = false                # Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
-match_block_trailing_comma = false      # Put a trailing comma after a block based match arm (non-block arms are not affected)
-max_width = 150                         # Maximum width of each line
-merge_derives = true                    # Merge multiple derives into a single one.
-merge_imports = true                    # Merge multiple imports into a single nested import.
-normalize_doc_attributes = false        # Convert #![doc] and #[doc] attributes to //! and /// doc comments.
-overflow_delimited_expr = true          # When structs, slices, arrays, and block/array-like macros are used as the last argument in an expression list, allow overflow.
-reorder_impl_items = false              # Reorder impl items. type and const are put first, then macros and methods.
-reorder_imports = true                  # Reorder import and extern crate statements alphabetically in groups (a group is separated by a newline).
-reorder_modules = true                  # Reorder mod declarations alphabetically in group.
-space_after_colon = false               # Leave a space after the colon.
-space_before_colon = false              # Leave a space before the colon.
-spaces_around_ranges = false            # Put spaces around the .., ..=, and ... range operators
-struct_field_align_threshold = 0        # The maximum diff of width between struct fields to be aligned with each other.
-struct_lit_single_line = true           # Put small struct literals on a single line
-tab_spaces = 4                          # Number of spaces per tab
-trailing_comma = "Vertical"             # How to handle trailing commas for lists
-use_small_heuristics = "Max"            # Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
-where_single_line = true                # Forces the where clause to be laid out on a single line.
+# Format code snippet included in doc comments.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#format_code_in_doc_comments
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3348)
+#
+# Changed: enforces clean code formatting everywhere
+format_code_in_doc_comments = true
 
-# No brainers
-type_punctuation_density = "Wide"       # Determines if + or = are wrapped in spaces in the punctuation of types
-use_try_shorthand = true                # Replace uses of the try! macro by the ? shorthand
-wrap_comments = true                    # Break comments to fit on the line
-version = "Two"                         # Don't need to be backwards compatible with One
-ignore = []
+# Format generated files. A file is considered as generated if the file starts
+# with // @generated.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#format_generated_files
+#
+# Default value: false
+# Possible values: true, false
+# Stable: No
+format_generated_files = false
+
+# Format the metavariable matching patterns in macros.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#format_macro_matchers
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3354)
+format_macro_matchers = false
+
+# Format the bodies of macros.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#format_macro_bodies
+#
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3355)
+format_macro_bodies = true
+
+# Format string literals where necessary
+# https://rust-lang.github.io/rustfmt/?version=master&search=#format_strings
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3353)
+format_strings = false
+
+# Use tab characters for indentation, spaces for alignment
+# https://rust-lang.github.io/rustfmt/?version=master&search=#hard_tabs
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: Yes
+hard_tabs = false
+
+# Do not show parse errors if the parser failed to parse files.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#hide_parse_errors
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3390)
+hide_parse_errors = false
+
+# Skip formatting files and directories that match the specified pattern.
+# The pattern format is the same as .gitignore. Be sure to use
+# Unix/forwardslash / style paths. This path style will work on all platforms.
+# Windows style paths with backslashes \ are not supported.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#ignore
+# 
+# Default value: format every file
+# Possible values: See an example below
+# Stable: Yes
+#
+# ignore = [ "src/types.rs"]
+
+# Indent style of imports
+# https://rust-lang.github.io/rustfmt/?version=master&search=#imports_indent
+# 
+# Default Value: "Block"
+# Possible values: "Block", "Visual"
+# Stable: No (tracking issue: #3360)
+imports_indent = "Block"
+
+# Item layout inside a imports block
+# https://rust-lang.github.io/rustfmt/?version=master&search=#imports_layout
+# 
+# Default value: "Mixed"
+# Possible values: "Horizontal", "HorizontalVertical", "Mixed", "Vertical"
+# Stable: No (tracking issue: #3361)
+imports_layout = "Mixed"
+
+# Indent on expressions or items.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#indent_style
+# 
+# Default value: "Block"
+# Possible values: "Block", "Visual"
+# Stable: No (tracking issue: #3346)
+indent_style = "Block"
+
+# Write an item and its attribute on the same line if their combined width is below a threshold
+# https://rust-lang.github.io/rustfmt/?version=master&search=#inline_attribute_width
+# 
+# Default value: 0
+# Possible values: any positive integer
+# Stable: No (tracking issue: #3343)
+inline_attribute_width = 0
+
+# Check whether beginnings of files match a license template.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#license_template_path
+# 
+# Default value: ""
+# Possible values: path to a license template file
+# Stable: No (tracking issue: #3352)
+license_template_path = ""
+
+# Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
+# https://rust-lang.github.io/rustfmt/?version=master&search=#match_arm_blocks
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3373)
+match_arm_blocks = true
+
+# Controls whether to include a leading pipe on match arms
+# https://rust-lang.github.io/rustfmt/?version=master&search=#match_arm_leading_pipes
+# 
+# Default value: "Never"
+# Possible values: Always, Never, Preserve
+# Stable: Yes
+match_arm_leading_pipes = "Never"
+
+# Put a trailing comma after a block based match arm (non-block arms are not affected)
+# https://rust-lang.github.io/rustfmt/?version=master&search=#match_block_trailing_comma
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: Yes
+#
+# Changed: keeps it uniform with non-block arms
+match_block_trailing_comma = true
+
+# Maximum width of each line
+# https://rust-lang.github.io/rustfmt/?version=master&search=#max_width
+# 
+# Default value: 100
+# Possible values: any positive integer
+# Stable: Yes
+#
+# Changed: modern monitors have more horizontal width than they used to
+max_width = 100
+
+# Merge multiple derives into a single one.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#merge_derives
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: Yes
+merge_derives = true
+
+# Merge multiple imports into a single nested import.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#merge_imports
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3362)
+#
+# Changed: modern monitors have more horizontal width than they used to
+merge_imports = true
+
+# Unix or Windows line endings
+# https://rust-lang.github.io/rustfmt/?version=master&search=#newline_style
+#
+# Default value: "Auto"
+# Possible values: "Auto", "Native", "Unix", "Windows"
+# Stable: Yes
+#
+# Changed: keeps things more uniform
+newline_style = "Unix"
+
+# Convert /* */ comments to // comments where possible
+# https://rust-lang.github.io/rustfmt/?version=master&search=#normalize_comments
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3350)
+#
+# Changed: keeps things more uniform
+normalize_comments = true
+
+# Convert #![doc] and #[doc] attributes to //! and /// doc comments.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#normalize_doc_attributes
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3351)
+#
+# Changed: keeps things more uniform
+normalize_doc_attributes = true
+
+# Preserves blanks lines at the start of the block. Note that this will preserve newlines,
+# but strip any other whitespace on those lines.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#preserve_block_start_blank_lines
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No
+preserve_block_start_blank_lines = false
+
+# Preserves block wraping arround closures. For example, useful when the closure || can be confused with OR.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#preserve_closure_block_wrapping
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No
+preserve_closure_block_wrapping = false
+
+# When structs, slices, arrays, and block/array-like macros are used as the last argument
+# in an expression list, allow them to overflow (like blocks/closures) instead of being
+# indented on a new line.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#overflow_delimited_expr
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3370)
+#
+# Changed: modern monitors have more horizontal width than they used to
+overflow_delimited_expr = true
+
+# Remove nested parens.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#remove_nested_parens
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: Yes
+remove_nested_parens = true
+
+# Reorder impl items. type and const are put first, then macros and methods.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#reorder_impl_items
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3363)
+#
+# Changed: keeps things more uniform
+reorder_impl_items = true
+
+# Reorder import and extern crate statements alphabetically in groups (a group is separated by a newline).
+# https://rust-lang.github.io/rustfmt/?version=master&search=#reorder_imports
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: Yes
+reorder_imports = true
+
+# Controls the strategy for how imports are grouped together.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#group_imports
+# 
+# Default value: "Preserve"
+# Possible values: Preserve, StdExternalCrate
+# Stable: No
+group_imports = "Preserve"
+
+# Reorder mod declarations alphabetically in group.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#reorder_modules
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: Yes
+reorder_modules = true
+
+# Require a specific version of rustfmt. If you want to make sure that the specific version of rustfmt is used in your CI, use this option.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#required_version
+# 
+# Default value: "CARGO_PKG_VERSION"
+# Possible values: any published version (e.g. "0.3.8")
+# Stable: No (tracking issue: #3386)
+required_version = "CARGO_PKG_VERSION"
+
+# Leave a space after the colon.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#space_after_colon
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3366)
+#
+# Changed: keeps things more uniform
+space_after_colon = false
+
+# Leave a space before the colon.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#space_before_colon
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3365)
+space_before_colon = false
+
+# Whether to put a space before the opening paren in function signatures
+# https://rust-lang.github.io/rustfmt/?version=master&search=#space_before_fn_sig_paren
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No
+space_before_fn_sig_paren = false
+
+# Put spaces around the .., ..=, and ... range operators
+# https://rust-lang.github.io/rustfmt/?version=master&search=#spaces_around_ranges
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3367)
+spaces_around_ranges = false
+
+# Determines if '=' are wrapped in spaces in attributes.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#space_around_attr_eq
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: No
+space_around_attr_eq = true
+
+# The maximum diff of width between struct fields to be aligned with each other.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#struct_field_align_threshold
+# 
+# Default value : 0
+# Possible values: any non-negative integer
+# Stable: No (tracking issue: #3371)
+struct_field_align_threshold = 0
+
+# Put small struct literals on a single line
+# https://rust-lang.github.io/rustfmt/?version=master&search=#struct_lit_single_line
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3357)
+struct_lit_single_line = true
+
+# Maximum width in the body of a struct literal before falling back to vertical formatting.
+# A value of 0 (zero) results in struct literals always being broken into multiple lines.
+# Note this occurs when width_heuristics is set to Off.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#struct_lit_width
+# 
+# Default value: 18
+# Possible values: any positive integer that is less than or equal to the value specified for max_width
+# Stable: Yes
+#
+# Changed: more readable
+struct_lit_width = 20
+
+# Maximum width in the body of a struct variant before falling back to vertical formatting. A value of 0 (zero) results in struct literals always being broken into multiple lines. Note this occurs when width_heuristics is set to Off.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#struct_variant_width
+# 
+# Default value: 35 percent of `max_width` provided by `width_heuristics`
+# Possible values: any positive integer that is less than or equal to the value specified for max_width
+# Stable: Yes
+struct_variant_width = 20 
+
+ # Number of spaces per tab
+ # https://rust-lang.github.io/rustfmt/?version=master&search=#tab_spaces
+ # 
+ # Default value: 4
+ # Possible values: any positive integer
+ # Stable: Yes
+tab_spaces = 4
+
+# How to handle trailing commas for lists
+# https://rust-lang.github.io/rustfmt/?version=master&search=#trailing_comma
+# 
+# Default value: "Vertical"
+# Possible values: "Always", "Never", "Vertical"
+# Stable: No (tracking issue: #3379)
+trailing_comma = "Vertical"
+
+# Add trailing semicolon after break, continue and return
+# https://rust-lang.github.io/rustfmt/?version=master&search=#trailing_semicolon
+# 
+# Default value: true
+# Possible values: true, false
+# Stable: No (tracking issue: #3378)
+trailing_semicolon = true
+
+# Determines if + or = are wrapped in spaces in the punctuation of types
+# https://rust-lang.github.io/rustfmt/?version=master&search=#type_punctuation_density
+# 
+# Default value: "Wide"
+# Possible values: "Compressed", "Wide"
+# Stable: No (tracking issue: #3364)
+#
+# Changed: more readable
+type_punctuation_density = "Compressed"
+
+# Enable unstable features on stable and beta channels (unstable features are available by default on nightly).
+# https://rust-lang.github.io/rustfmt/?version=master&search=#unstable_features
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: Yes
+#
+# Changed: use all the format features all the time
+unstable_features = true
+
+# Use field initialize shorthand if possible.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#use_field_init_shorthand
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: Yes
+#
+# Changed: more readable
+use_field_init_shorthand = true
+
+# Replace uses of the try! macro by the ? shorthand
+# https://rust-lang.github.io/rustfmt/?version=master&search=#use_try_shorthand
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: Yes
+#
+# Changed: more readable
+use_try_shorthand = true
+
+# Forces the where clause to be laid out on a single line.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#where_single_line
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3359)
+where_single_line = false
+
+# This option can be used to simplify the management and bulk updates of the granular width
+# configuration settings (fn_call_width, attr_fn_like_width, struct_lit_width,
+# struct_variant_width, array_width, chain_width, single_line_if_else_max_width),
+# that respectively control when formatted constructs are multi-lined/vertical based on width.
+# https://rust-lang.github.io/rustfmt/?version=master&search=#width_heuristics
+#
+# Default value: "Scaled"
+# Possible values: "Scaled", "Off", "Max"
+# Stable: Yes
+width_heuristics = "Scaled"
+
+# Break comments to fit on the line
+# https://rust-lang.github.io/rustfmt/?version=master&search=#wrap_comments
+# 
+# Default value: false
+# Possible values: true, false
+# Stable: No (tracking issue: #3347)
+#
+# Changed: more readable
+wrap_comments = true
