@@ -130,8 +130,13 @@ mod tests {
     #[test]
     fn test_pass() {
         initialize();
-        assert_eq!("Oh no, we missed!", pass().unwrap_err().to_string());
-        assert!(!pass().unwrap_err().is::<Error>());
+        let err = pass().unwrap_err();
+        assert_eq!("Oh no, we missed!", err.to_string());
+
+        assert!(!err.is::<Error>());
+        assert!(err.is::<std::io::Error>());
+        assert!(err.downcast_ref::<Error>().is_none());
+        assert!(err.downcast_ref::<std::io::Error>().is_some());
     }
 
     #[test]

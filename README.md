@@ -41,6 +41,7 @@ simplified backtraces`.
   * [Downcasting](#downcasting)
     * [downcast\_ref](#downcast_ref)
     * [match\_err](#match_err)
+    * [pass](#pass)
   * [Chaining](#chaining)
     * [source](#source)
   * [Retries](#retries)
@@ -149,6 +150,12 @@ fn main() {
 }
 ```
 
+Results:
+```
+$ cargo run -q --example downcast_ref
+Root cause is std::io::Error: Oh no, we missed!
+```
+
 #### `match_err!` - *matches on concrete error typese* <a name="err_is"/></a>
 ```rust
 use witcher::prelude::*;
@@ -171,6 +178,47 @@ fn main() {
         _ => println!("{}", err)
     });
 }
+```
+
+Results:
+```
+$ cargo run -q --example downcast_match
+Root cause is std::io::Error: Oh no, we missed!
+```
+
+#### `pass` - *pass error through transparently* <a name="pass"/></a>
+In some cases it might be nice to be able to use the Witcher common error pattern but treat
+particular top level errors as a pass through.
+
+WARNING: this will not work with the `match_err!` macro which uses the type directly for matching
+rather than indirectly when working with an `Error` type.
+
+```rust
+use witcher::prelude::*;
+
+fn do_something() -> Result<()> {
+    do_external_thing().pass()
+}
+
+fn do_external_thing() -> std::io::Result<()> {
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "Oh no, we missed!"))?
+}
+
+fn main() {
+    let err = do_something().unwrap_err();
+
+    // Since we used `pass` we can match on the error directly
+    match err.downcast_ref::<std::io::Error>() {
+        Some(err) => println!("Root cause is std::io::Error: {}", err),
+        None => println!("Root cause is witcher::Error: {}", err),
+    }
+}
+```
+
+Results:
+```
+$ cargo run -q --example pass
+Root cause is std::io::Error: Oh no, we missed!
 ```
 
 ## Chaining <a name="retries"/></a>
@@ -232,6 +280,14 @@ fn main() {
 }
 ```
 
+Results:
+```
+$ cargo run -q --example chain
+Found witcher::Error: Failed doing super hero work
+Found SuperError: SuperError is here!
+Found SuperErrorSideKick: SuperErrorSideKick is here!
+```
+
 ## Retries <a name="retries"/></a>
 We can retry failing code with a few different `Result` extension functions.
 
@@ -258,6 +314,20 @@ fn main() {
 }
 ```
 
+Results:
+```
+cargo run -q --example retry_err_is
+retrying using err_is #1
+retrying using err_is #2
+retrying using err_is #3
+ error: witcher::Error: Failed while attacking beast
+ cause: std::io::error::Error: Oh no, we missed!
+symbol: retry_err_is::retry_on_concreate_error_type_using_err_is
+    at: examples/retry_err_is.rs:11:5
+symbol: retry_err_is::main
+    at: examples/retry_err_is.rs:18:22
+```
+
 #### `retry_on` - *is a cleaner simplified way to do a similar thing as our err_is example* <a name="retry_on"/></a>
 ```rust
 use witcher::prelude::*;
@@ -277,6 +347,20 @@ fn main() {
 }
 ```
 
+Results:
+```
+cargo run -q --example retry_on
+std::io::Error: retrying! #1
+std::io::Error: retrying! #2
+std::io::Error: retrying! #3
+ error: witcher::Error: Failed while attacking beast
+ cause: std::io::error::Error: Oh no, we missed!
+symbol: retry_on::retry_on_concreate_error_type
+    at: examples/retry_on.rs:4:5
+symbol: retry_on::main
+    at: examples/retry_on.rs:16:22
+```
+
 #### `retry` - *is similar to `retry_on` but doesn't take the type of error into account* <a name="retry"/></a>
 ```rust
 use witcher::prelude::*;
@@ -294,6 +378,20 @@ fn do_external_thing() -> std::io::Result<()> {
 fn main() {
     println!("{}", retry().unwrap_err());
 }
+```
+
+Results:
+```
+cargo run -q --example retry
+std::io::Error: retrying! #1
+std::io::Error: retrying! #2
+std::io::Error: retrying! #3
+ error: witcher::Error: Failed while attacking beast
+ cause: std::io::error::Error: Oh no, we missed!
+symbol: retry::retry
+    at: examples/retry.rs:4:5
+symbol: retry::main
+    at: examples/retry.rs:16:22
 ```
 
 ## Display <a name="display"/></a>

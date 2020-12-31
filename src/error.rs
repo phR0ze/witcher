@@ -82,7 +82,7 @@ impl Error {
     {
         Err(Self {
             pass: true,
-            msg: String::new(),
+            msg: "pass".to_string(),
             type_name: Error::name(&err),
             backtrace: crate::backtrace::new(),
             inner: Some(Box::new(err)),

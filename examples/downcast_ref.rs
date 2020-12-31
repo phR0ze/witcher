@@ -18,7 +18,7 @@ fn main() {
 
     // Match single concrete error type
     if let Some(e) = root_cause.downcast_ref::<std::io::Error>() {
-        println!("Root cause is a std::io::Error: {}", e)
+        println!("Root cause is std::io::Error: {}", e)
     } else {
         println!("{:?}", err)
     }
