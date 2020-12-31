@@ -147,10 +147,7 @@ mod tests
         let cwd = std::env::current_dir().unwrap();
         assert_eq!("foo", simple_path(Some(Path::new(&cwd).join("foo").as_ref())));
         assert_eq!("foobar", simple_path(Some(Path::new(&cwd).join("foobar").as_ref())));
-        assert_eq!(
-            "/rustc/123/src/libstd/foobar",
-            simple_path(Some(Path::new("/rustc/123/src/libstd").join("foobar").as_ref()))
-        );
+        assert_eq!("/rustc/123/src/libstd/foobar", simple_path(Some(Path::new("/rustc/123/src/libstd").join("foobar").as_ref())));
         assert_eq!("<unknown>", simple_path(None));
     }
 

@@ -128,9 +128,6 @@ mod tests
         initialize();
         assert_eq!("Failed while attacking beast", retry().unwrap_err().to_string());
         assert_eq!("Failed while attacking beast", retry_on_concreate_error_type().unwrap_err().to_string());
-        assert_eq!(
-            "Failed while attacking beast: 3",
-            retry_on_concreate_error_type_using_err_is().unwrap_err().to_string()
-        );
+        assert_eq!("Failed while attacking beast: 3", retry_on_concreate_error_type_using_err_is().unwrap_err().to_string());
     }
 }

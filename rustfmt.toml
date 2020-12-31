@@ -12,7 +12,7 @@
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-array_width = 60                        
+array_width = 60
 
 # Maximum width of the args of a function-like attributes before falling back to vertical formatting.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#attr_fn_like_width
@@ -22,7 +22,7 @@ array_width = 60
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-attr_fn_like_width = 70
+attr_fn_like_width = 100
 
 # Where to put a binary operator when a binary expression goes multiline.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#binop_separator
@@ -160,7 +160,7 @@ fn_params_layout = "Compressed"
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-fn_call_width = 100
+fn_call_width = 190
 
 # Put single-expression functions on a single line
 # https://rust-lang.github.io/rustfmt/?version=master&search=#fn_single_line
@@ -340,7 +340,7 @@ match_block_trailing_comma = true
 # Stable: Yes
 #
 # Changed: modern monitors have more horizontal width than they used to
-max_width = 110
+max_width = 200
 
 # Merge multiple derives into a single one.
 # https://rust-lang.github.io/rustfmt/?version=master&search=#merge_derives
@@ -527,7 +527,7 @@ struct_lit_single_line = true
 # Stable: Yes
 #
 # Changed: more readable
-struct_lit_width = 20
+struct_lit_width = 80
 
 # Maximum width in the body of a struct variant before falling back to vertical formatting.
 # A value of 0 (zero) results in struct literals always being broken into multiple lines.
@@ -537,7 +537,7 @@ struct_lit_width = 20
 # Default value: 35 percent of `max_width` provided by `width_heuristics`
 # Possible values: any positive integer that is less than or equal to the value specified for max_width
 # Stable: Yes
-struct_variant_width = 20 
+struct_variant_width = 80
 
  # Number of spaces per tab
  # https://rust-lang.github.io/rustfmt/?version=master&search=#tab_spaces
@@ -620,7 +620,7 @@ where_single_line = false
 # Default value: "Scaled"
 # Possible values: "Scaled", "Off", "Max"
 # Stable: Yes
-width_heuristics = "Scaled"
+width_heuristics = "Off"
 
 # Break comments to fit on the line
 # https://rust-lang.github.io/rustfmt/?version=master&search=#wrap_comments

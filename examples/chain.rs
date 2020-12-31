@@ -37,9 +37,7 @@ fn do_something() -> Result<()>
 
 fn do_external_thing() -> std::result::Result<(), SuperError>
 {
-    Err(SuperError {
-        side: SuperErrorSideKick,
-    })
+    Err(SuperError { side: SuperErrorSideKick })
 }
 
 fn main()

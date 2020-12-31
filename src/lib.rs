@@ -201,10 +201,7 @@ mod tests
         assert_eq!("simple_wrap", format!("{}", wrap_simple().unwrap_err()));
         assert_eq!(" error: simple_wrap\n cause: oh no!", format!("{:#}", wrap_simple().unwrap_err()));
         assert_eq!("foo: simple_wrap", wrap_formatted().unwrap_err().to_string());
-        assert_eq!(
-            " error: foo: simple_wrap\n cause: oh no!",
-            format!("{:#}", wrap_formatted().unwrap_err())
-        );
+        assert_eq!(" error: foo: simple_wrap\n cause: oh no!", format!("{:#}", wrap_formatted().unwrap_err()));
     }
 
     #[test]
